@@ -7,8 +7,8 @@
 //#include <glew.h>
 //#include <freeglut.h>
 //#include <freeglut_ext.h>
-/*使用三次方程求根法求ti*/
-/*19/1/26 计算连接处的切线角度，给LAC环赋角度初值*/
+/*使用二分法求ti 20220513*/
+
 
 using namespace std;
 using namespace Eigen;
@@ -33,6 +33,10 @@ vector<double> lambdai;
 vector<double> theta;
 vector<double> ai;
 
+vector<vector<double>> Mtrxai;				//ai的矩阵
+
+double defaultai = 2. / 3.;
+
 GLsizei winwidth = 800;
 GLsizei winHeight = 800;
 bool mouseLeftDown;
@@ -41,10 +45,8 @@ int Num,i0;
 bool flag0 = false;
 bool closedflag = true;
 
-void kcurve(vecEg2dd& cpsi);
-void openkcurve(vecEg2dd& cpsi);
-
 void closed_ekcurve(vecEg2dd& cpsi);
+void opened_ekcurve(vecEg2dd& cpsi);
 
 void calculate_ci02(int n);
 void opencalculate_ci02(int n);
@@ -55,10 +57,17 @@ void opencalculate_ti(int n, vecEg2dd& cpsi);
 void calculate_lambdai(int n);
 void opencalculate_lambdai(int n);
 double TrgArea(const EVec2d&p0, const EVec2d&p1, const EVec2d&p2);
-bool CheckCvrg(int n, vecEg2dd& cpsi);
+
+bool closedCheckCvrg(int n, vecEg2dd& cpsi);
 bool openCheckCvrg(int n, vecEg2dd& cpsi);
+
 bool CheckItr(const vecEg2dd &prevci1,int n);
-void drawQuBzr(EVec2d &ci0, EVec2d &ci1, EVec2d &ci2);
+void drawQuBzr(EVec2d &ci0, EVec2d &ci1, EVec2d &ci2, double ai);
+void drawCrvtrVctrClmn(EVec2d& ci0, EVec2d& ci1, EVec2d& ci2, double ai);
+
+double bisection(int i, EVec2d& cpsii);
+double dCrvtr(int i, double ti, EVec2d& cpsii);
+
 //bool checkpt(int x, int y);
 //void mouseMotionPT(int x, int y);
 void OnMouse(int button, int state, int x, int y);
@@ -66,7 +75,6 @@ void myKeyboard(unsigned char key, int x, int y);
 
 void menuFunc(int value);
 //void multikcrv();
-double getRealSolutionOfCubicFunc(const double a, const double b, const double c);
 
 void myInit()
 {
@@ -95,10 +103,10 @@ void myDisplay()
 
 	Num = cps.size();
 
-	for (EVec2d& point : cps)
+	/*for (EVec2d& point : cps)
 	{
 		cout << "cps:" << point.transpose() << endl;
-	}
+	}*/
 
 	glColor3f(1, 1, 0);		//黄色
 	glPointSize(7);
@@ -124,18 +132,20 @@ void myDisplay()
 	{
 		if ((Num>3) && closedflag)
 		{
-			kcurve(cps);
+			closed_ekcurve(cps);
 			for (int j = 0; j < Num; ++j)
 			{
-				drawQuBzr(ci0[j], ci1[j], ci2[j]);
+				drawQuBzr(ci0[j], ci1[j], ci2[j],ai[j]);
+				//drawCrvtrVctrClmn(ci0[j], ci1[j], ci2[j], ai[j]);
 			}
 		}
 		if (!closedflag)
 		{
-			openkcurve(cps);
+			opened_ekcurve(cps);
 			for (int j = 0; j < Num-2; ++j)
 			{
-				drawQuBzr(ci0[j], ci1[j], ci2[j]);
+				drawQuBzr(ci0[j], ci1[j], ci2[j],ai[j]);
+				//drawCrvtrVctrClmn(ci0[j], ci1[j], ci2[j], ai[j]);
 			}
 		}
 		
@@ -146,11 +156,11 @@ void myDisplay()
 	{
 		if (closedflag)
 		{
-			MtrxCps_c.push_back({ cps });			//闭式K-curve点矩阵
+			MtrxCps_c.push_back({ cps });			//闭式eK-curve点矩阵
 		}
 		if (!closedflag)
 		{
-			MtrxCps_o.push_back({ cps });			//开式K-curve点矩阵
+			MtrxCps_o.push_back({ cps });			//开式eK-curve点矩阵
 		}
 		
 		flag0 = false;
@@ -161,7 +171,7 @@ void myDisplay()
 	
 	int num1 = MtrxCps_o.size();		
 
-	for (int i = 0; i < num1; ++i)
+	/*for (int i = 0; i < num1; ++i)
 	{
 		int n = MtrxCps_o[i].size();
 		for (int j = 0; j < n; j++)
@@ -172,11 +182,11 @@ void myDisplay()
 		}
 		cout << endl;
 
-	}
+	}*/
 
 	int num2 = MtrxCps_c.size();
 
-	for (int i = 0; i < num2; ++i)
+	/*for (int i = 0; i < num2; ++i)
 	{
 		int n = MtrxCps_c[i].size();
 		for (int j = 0; j < n; j++)
@@ -187,7 +197,7 @@ void myDisplay()
 		}
 		cout << endl;
 
-	}
+	}*/
 
 	for (int i = 0; i < num1; ++i)
 	{
@@ -254,24 +264,24 @@ void myDisplay()
 		glEnd();
 	}
 
-	for (int i = 0; i < num1; ++i)			//画多条开式k-curve
+	for (int i = 0; i < num1; ++i)			//画多条开式ek-curve
 	{
-		openkcurve(MtrxCps_o[i]);
+		opened_ekcurve(MtrxCps_o[i]);
 		int n = MtrxCps_o[i].size();
 		for (int j = 0; j < n-2; j++)
 		{
-			drawQuBzr(ci0[j], ci1[j], ci2[j]);
+			drawQuBzr(ci0[j], ci1[j], ci2[j],ai[j]);
 		}
 
 	}
 
-	for (int i = 0; i < num2; ++i)			//画多条闭式k-curve
+	for (int i = 0; i < num2; ++i)			//画多条闭式ek-curve
 	{
-		kcurve(MtrxCps_c[i]);
+		closed_ekcurve(MtrxCps_c[i]);
 		int n = MtrxCps_c[i].size();
 		for (int j = 0; j < n; j++)
 		{
-			drawQuBzr(ci0[j], ci1[j], ci2[j]);
+			drawQuBzr(ci0[j], ci1[j], ci2[j],ai[j]);
 		}
 
 	}
@@ -280,7 +290,7 @@ void myDisplay()
 	//glutSwapBuffers();
 	
 }
-void drawQuBzr(EVec2d &ci0, EVec2d &ci1, EVec2d &ci2)
+void drawQuBzr(EVec2d &ci0, EVec2d &ci1, EVec2d &ci2,double ai)
 {
 	int n = 20;
 	double t;
@@ -292,10 +302,80 @@ void drawQuBzr(EVec2d &ci0, EVec2d &ci1, EVec2d &ci2)
 	for (int i = 0; i <= n; ++i)
 	{
 		t = i * h;
-		bezPts = (1. - t)*(1. - t)*ci0 + 2.*(1. - t)*t*ci1 + t * t*ci2;
+		bezPts = pow(1. - t, 3.0) * ci0 + 3.0 * pow(1. - t, 2.0) * t * ((1.0 - ai) * ci0 + ai * ci1)
+			+ 3.0 * (1.0 - t) * pow(t, 2.0) * (ai * ci1 + (1.0 - ai) * ci2) + pow(t, 3.0) * ci2;
 		glVertex2d(bezPts[0], bezPts[1]);
 	}
 	glEnd();
+}
+
+void drawCrvtrVctrClmn(EVec2d& ci0, EVec2d& ci1, EVec2d& ci2, double ai)
+{
+	
+	int n = 20;			//画曲率直方图
+	vecEg2dd k0;
+	k0.resize(n);
+
+	double t;
+	double h = 1. / n;
+	double coeff = 2000.;
+	double norm;
+	double val0;
+
+	EVec2d ct, dct, ddct, e0, e1;
+	EVec2d p0, p1, p2, p3;
+
+	p0 = ci0;
+	p1 = (1. - ai) * ci0 + ai * ci1;
+	p2 = ai * ci1 + (1. - ai) * ci2;
+	p3 = ci2;
+
+	//求曲率的向量和模长
+	for (int i = 0; i <= n; ++i) {
+		t = i * h;
+		dct = 3. * pow(1. - t, 2.) * (p1 - p0) + 6. * (1. - t) * t * (p2 - p1) + 3. * pow(t, 2.) * (p3 - p2);
+		ddct = 6. * (1. - t) * (p2 - 2. * p1 + p0) + 6. * t * (p3 - 2. * p2 + p1);
+		norm = sqrt(pow(dct[0], 2.) + pow(dct[1], 2.));
+		val0 = dct[0] * ddct[1] - dct[1] * ddct[0];
+		e0 = dct / norm;
+		e1[0] = e0[1];			//e0为切线单位向量，e1为与e0垂直的向量
+		e1[1] = -e0[0];			//x0*y0+x1*y1=0, x0=y1,y0=-x1
+		k0[i] = coeff * e1 * val0 / pow(norm, 3.);		//k0为曲率乘以系数
+
+	}
+
+	//画曲率端点连线
+	glColor3f(218/255, 112/255, 214/255);		//紫色
+	glLineWidth(2);
+	glBegin(GL_LINE_STRIP);
+	for (int i = 0; i <= n; ++i)
+	{
+		t = i * h;
+		ct = pow(1. - t, 3.0) * p0 + 3.0 * pow(1. - t, 2.0) * t * p1
+			+ 3.0 * (1.0 - t) * pow(t, 2.0) * p2 + pow(t, 3.0) * p3;
+		glVertex2d(ct[0]+k0[i][0], ct[1]+k0[i][1]);
+	}
+	glEnd();
+
+	//画曲率长度线
+	glColor3f(218 / 255, 112 / 255, 214 / 255);		//紫色
+	glLineWidth(2);
+	glBegin(GL_LINES);
+	for (int i = 0; i <= n; ++i)
+	{
+		t = i * h;
+		ct = pow(1. - t, 3.0) * p0 + 3.0 * pow(1. - t, 2.0) * t * p1
+			+ 3.0 * (1.0 - t) * pow(t, 2.0) * p2 + pow(t, 3.0) * p3;
+		glVertex2d(ct[0], ct[1]);
+		glVertex2d(ct[0] + k0[i][0], ct[1] + k0[i][1]);
+	}
+	glEnd();
+
+}
+
+void calCrvtrVctrClmn() 
+{
+
 }
 
 void myKeyboard(unsigned char key, int x, int y)
@@ -324,7 +404,9 @@ void myKeyboard(unsigned char key, int x, int y)
 //	cps.clear();
 //}
 
-void openkcurve(vecEg2dd& cpsi)
+
+
+void opened_ekcurve(vecEg2dd& cpsi)
 {
 	int PntNum = cpsi.size();
 	int CntNum = PntNum - 2;
@@ -338,14 +420,9 @@ void openkcurve(vecEg2dd& cpsi)
 	ci1.resize(CntNum);
 	ci2.clear();
 	ci2.resize(CntNum);
-	cti.clear();
-	cti.resize(CntNum);
-	dcti.clear();
-	dcti.resize(CntNum);
-	dcps.clear();
-	dcps.resize(CntNum);
-	theta.clear();
-	theta.resize(CntNum);
+
+	ai.clear();
+	ai.resize(CntNum, 2. / 3.);
 
 	ci0[0] = cpsi[0];
 	ci2[CntNum - 1] = cpsi[PntNum - 1];
@@ -353,13 +430,13 @@ void openkcurve(vecEg2dd& cpsi)
 	{
 		ci1[i] = cpsi[i + 1];
 	}
-	
-	opencalculate_ci02(CntNum);
-	
 
+	opencalculate_ci02(CntNum);
+
+	int counter = 0;
 	const int ITER_NUM = 400;
-	for (int iter = 0; iter < ITER_NUM; ++iter)
-	{
+	
+	do{
 		/*std::cout << "--------------------------------------------------" << std::endl;
 		std::cout << "iter : " << iter << std::endl;*/
 		vecEg2dd prevci1;
@@ -372,17 +449,17 @@ void openkcurve(vecEg2dd& cpsi)
 		opencalculate_ti(CntNum, cpsi);
 
 		opencalculate_lambdai(CntNum);
-
-		if (openCheckCvrg(CntNum, cpsi) || CheckItr(prevci1, CntNum))
+		++counter;
+		if (CheckItr(prevci1, CntNum))
 		{
 			cout << "converge" << endl;
 			break;
 		}
 
-	}
+
+	} while (counter < ITER_NUM && !openCheckCvrg(CntNum, cpsi));
 
 }
-
 
 void closed_ekcurve(vecEg2dd& cpsi)
 {
@@ -397,14 +474,10 @@ void closed_ekcurve(vecEg2dd& cpsi)
 	ci1.resize(numi);
 	ci2.clear();
 	ci2.resize(numi);
-	cti.clear();
-	cti.resize(numi);
-	dcti.clear();
-	dcti.resize(numi);
-	dcps.clear();
-	dcps.resize(numi);
-	theta.clear();
-	theta.resize(numi);
+	
+	ai.clear();
+	ai.resize(numi, 2. / 3.);
+	
 
 	ci1 = cpsi;
 	calculate_ci02(numi);
@@ -419,136 +492,18 @@ void closed_ekcurve(vecEg2dd& cpsi)
 		calculate_ci1(numi, cpsi);
 		calculate_ci02(numi);
 		calculate_ti(numi, cpsi);
-	}
-}
-
-void kcurve(vecEg2dd &cpsi)
-{
-	int numi = cpsi.size();
-	lambdai.clear();
-	lambdai.resize(numi, 0.5);
-	ti.clear();
-	ti.resize(numi, 0.5);
-	ci0.clear();
-	ci0.resize(numi);
-	ci1.clear();
-	ci1.resize(numi);
-	ci2.clear();
-	ci2.resize(numi);
-	cti.clear();
-	cti.resize(numi);
-	dcti.clear();
-	dcti.resize(numi);
-	dcps.clear();
-	dcps.resize(numi);
-	theta.clear();
-	theta.resize(numi);
-
-	ci1 = cpsi;
-	calculate_ci02(numi);
-
-	const int ITER_NUM = 400;
-	/*cout << "ITER_NUM="<<ITER_NUM << endl;*/
-	for (int iter = 0; iter < ITER_NUM; ++iter)
-	{
-		/*std::cout << "--------------------------------------------------" << std::endl;
-		std::cout << "iter : " << iter << std::endl;*/
-		vecEg2dd prevci1;
-		prevci1.resize(numi);
-		prevci1 = ci1;
-
-		calculate_ci1(numi,cpsi);
-		
-		calculate_ci02(numi);
-		calculate_ti(numi, cpsi);
-		
 		calculate_lambdai(numi);
-		
-		if (CheckCvrg(numi, cpsi) || CheckItr(prevci1, numi))
+		++counter;
+		if (CheckItr(prevci1, numi))
 		{
-			cout<<"converge"<<endl;
+			cout << "converge" << endl;
 			break;
 		}
-			
-	}
+	} while (counter < ITER_NUM && !closedCheckCvrg(numi, cpsi));
 	
-
-	/*glColor3d(0, 1, 1);
-	glLineWidth(3);
-	glBegin(GL_LINE_LOOP);
-
-	for (int i = 0; i < Num; ++i)
-	{
-
-		glVertex2d(ci0[i][0], ci0[i][1]);
-		glVertex2d(ci1[i][0], ci1[i][1]);
-	}
-	glEnd();*/
-
-	/*for (int i = 0; i < numi; ++i)
-		drawQuBzr(ci0[i], ci1[i], ci2[i]);*/
-
-	/*求控制点连线的向量*/
-	for (int i = 0; i < numi; ++i)
-	{
-		dcps[i] = cpsi[(i + 1)%numi] - cpsi[i];
-	}
-	cout << "cps:" << endl;
-	for (EVec2d &ct : cpsi)
-	{
-		cout << ct.transpose() << endl;
-	}
-	cout << "dcps:" << endl;
-	for (EVec2d &ct : dcps)
-	{
-		cout << ct.transpose() << endl;
-	}
-
-	//glColor3f(0, 1, 0);			//绿色
-	//glPointSize(5);
-	//glBegin(GL_POINTS);
-	//for (int i = 0; i < numi; ++i)
-	//{
-	//	
-	//	cti[i] = (1 - ti[i])*(1 - ti[i])*ci0[i] + 2 * (1 - ti[i])*ti[i] * ci1[i] + ti[i] * ti[i] * ci2[i];
-	//	dcti[i] = 2 * ((1 - ti[i])*(ci1[i] - ci0[i]) + ti[i] * (ci2[i] - ci1[i]));	/*求控制点处切线的向量*/
-	//	glVertex2d(cti[i][0], cti[i][1]);
-	//}
-	//glEnd();
-	//
-	///*求控制点切线与k曲线在控制点处切线的夹角*/
-	//for (int i = 0; i < numi; ++i)
-	//{
-	//	double s0,s1;
-	//	s0 = dcti[i][0] * dcps[i][0] + dcti[i][1] * dcps[i][1];
-	//	s1 = sqrt(dcps[i][0] * dcps[i][0] + dcps[i][1] * dcps[i][1])
-	//		 *sqrt(dcti[i][0] * dcti[i][0] + dcti[i][1] * dcti[i][1]);
-	//	theta[i] = acos(s0 / s1)*180/PI;
-	//	
-	//}
-	//cout << "theta:" << endl;
-	//for (double &ct : theta)
-	//{
-	//	cout << ct << endl;
-	//}
-
-	//glColor3f(0, 1, 1);			//青色
-	//glLineWidth(3);
-	//for (int i = 0; i < numi; ++i)
-	//{
-	//	EVec2d dctf,dctb;
-	//	dctf[0] = cti[i][0]+100.0;
-	//	dctf[1] = cti[i][1] + 100.0 * dcti[i][1] / dcti[i][0];
-	//	dctb[0] = cti[i][0] - 100.0;
-	//	dctb[1] = cti[i][1] - 100.0 * dcti[i][1] / dcti[i][0];
-	//	glBegin(GL_LINE_STRIP);
-	//	glVertex2d(dctb[0], dctb[1]);
-	//	glVertex2d(dctf[0], dctf[1]);
-	//	glEnd();
-	//}
-	
-
 }
+
+
 bool CheckItr(const vecEg2dd &prevci1,int n)
 {
 	double s = 0;
@@ -562,37 +517,39 @@ bool CheckItr(const vecEg2dd &prevci1,int n)
 
 bool openCheckCvrg(int n, vecEg2dd& cpsi)
 {
-	vecEg2dd cti;
-	cti.resize(n);
-	vector<double> dis0;
-	dis0.resize(n);
+	EVec2d cti;
+
+	double dis0;
+	double dis1 = 0;
 	for (int i = 0; i < n; ++i)
 	{
-		cti[i][0] = (1 - ti[i]) * (1 - ti[i]) * ci0[i][0] + 2 * (1 - ti[i]) * ti[i] * ci1[i][0] + ti[i] * ti[i] * ci2[i][0];
-		cti[i][1] = (1 - ti[i]) * (1 - ti[i]) * ci0[i][1] + 2 * (1 - ti[i]) * ti[i] * ci1[i][1] + ti[i] * ti[i] * ci2[i][1];
-		dis0[i] = (cti[i] - cpsi[i+1]).norm();
+		cti = pow(1 - ti[i], 3.0) * ci0[i] + 3.0 * pow(1 - ti[i], 2.0) * ti[i] * ((1.0 - ai[i]) * ci0[i] + ai[i] * ci1[i])
+			+ 3.0 * (1.0 - ti[i]) * pow(ti[i], 2.0) * (ai[i] * ci1[i] + (1.0 - ai[i]) * ci2[i]) + pow(ti[i], 3.0) * ci2[i];
+		
+		dis0 = (cti - cpsi[i+1]).norm();
+		dis1 += dis0;
 	}
 
-	for (int i = 0; i < n; ++i)
-	{
-		if (dis0[i] > 1.0e-4)
-			return false;
-	}
+	if (dis1 > 1.0e-8)
+		return false;
 
 	return true;
 }
 
-bool CheckCvrg(int n, vecEg2dd& cpsi)
+bool closedCheckCvrg(int n, vecEg2dd& cpsi)
 {
-	vecEg2dd cti;
-	cti.resize(n);
-	vector<double> dis0;
-	dis0.resize(n);
+	EVec2d cti;
+	
+	double dis0;
+	double dis1 = 0;
+	
 	for (int i = 0; i < n; ++i)
 	{
-		cti[i][0] = (1 - ti[i])*(1 - ti[i])*ci0[i][0] + 2 * (1 - ti[i])*ti[i] * ci1[i][0] + ti[i] * ti[i] * ci2[i][0];
-		cti[i][1] = (1 - ti[i])*(1 - ti[i])*ci0[i][1] + 2 * (1 - ti[i])*ti[i] * ci1[i][1] + ti[i] * ti[i] * ci2[i][1];
-		dis0[i] = (cti[i] - cpsi[i]).norm();
+		cti = pow(1 - ti[i], 3.0) * ci0[i] + 3.0 * pow(1 - ti[i], 2.0) * ti[i] * ((1.0 - ai[i]) * ci0[i] + ai[i] * ci1[i])
+			+ 3.0 * (1.0 - ti[i]) * pow(ti[i], 2.0) * (ai[i] * ci1[i] + (1.0 - ai[i]) * ci2[i]) + pow(ti[i], 3.0) * ci2[i];
+		
+		dis0 = (cti - cpsi[i]).norm();
+		dis1 += dis0;
 	}
 
 	/*cout << "cti:" << endl;		
@@ -605,11 +562,10 @@ bool CheckCvrg(int n, vecEg2dd& cpsi)
 	{
 		cout << dis << endl;
 	}*/
-	for (int i = 0; i < n; ++i)
-	{
-		if (dis0[i] > 1.0e-4)
-			return false;
-	}
+	
+	if (dis1 > 1.0e-8)
+		return false;
+	
 	
 	return true;
 }
@@ -617,13 +573,15 @@ void calculate_ti(int n, vecEg2dd& cpsi)
 {
 	for (int i = 0; i < n; ++i)
 	{
-		EVec2d ci2_ci0 = ci2[i] - ci0[i];
-		EVec2d ci0_pi = ci0[i] - cpsi[i];
-		double a = ci2_ci0.squaredNorm();
-		double b = 3 * ci2_ci0.dot(ci0_pi);
-		double c = (3 * ci0[i] - 2 * cpsi[i] - ci2[i]).dot(ci0_pi);
-		double d = -ci0_pi.squaredNorm();
-		ti[i] = (a == 0) ? 0.5 : getRealSolutionOfCubicFunc(b / a, c / a, d / a);
+		ti[i] = bisection(i, cpsi[i]);
+		if (ti[i] < 0.0)
+		{
+			ti[i] = 0.0;
+		}
+		else if (ti[i] > 1.0)
+		{
+			ti[i] = 1.0;
+		}
 	}
 	
 }
@@ -632,48 +590,323 @@ void opencalculate_ti(int n, vecEg2dd& cpsi)
 {
 	for (int i = 0; i < n; ++i)
 	{
-		EVec2d ci2_ci0 = ci2[i] - ci0[i];
-		EVec2d ci0_piplus1 = ci0[i] - cpsi[i + 1];
-		double a = ci2_ci0.squaredNorm();
-		double b = 3 * ci2_ci0.dot(ci0_piplus1);
-		double c = (3 * ci0[i] - 2 * cpsi[i+1] - ci2[i]).dot(ci0_piplus1);
-		double d = -ci0_piplus1.squaredNorm();
-		ti[i] = (a == 0) ? 0.5 : getRealSolutionOfCubicFunc(b / a, c / a, d / a);
+		ti[i] = bisection(i, cpsi[i+1]);
+		if (ti[i] < 0.0)
+		{
+			ti[i] = 0.0;
+		}
+		else if (ti[i] > 1.0)
+		{
+			ti[i] = 1.0;
+		}
 	}
 }
 
-double getRealSolutionOfCubicFunc(const double a, const double b, const double c)
+double bisection(int i,EVec2d& cpsii)
 {
-	const double p = b - a * a / 3;
-	const double q = 2 * a*a*a / 27 - a * b / 3 + c;
-	const double tmp = q * q / 4 + p * p*p / 27;
-	if (tmp < 0) return 0;
-	const double mTmp = -q / 2 + sqrt(tmp);
-	const double nTmp = -q / 2 - sqrt(tmp);
-	const double m = (mTmp < 0) ? -pow(-mTmp, 1 / 3.0) : pow(mTmp, 1 / 3.0);
-	const double n = (nTmp < 0) ? -pow(-nTmp, 1 / 3.0) : pow(nTmp, 1 / 3.0);
-	return -a / 3 + m + n;
+	double a;					//二分法求曲率的导数为零时ti的值，即曲率极值处的ti值
+	double max = 1.0;
+	double min = 0.0;
+	double val0, val1;
+	val0 = dCrvtr(i, min, cpsii);
+	val1 = dCrvtr(i, max, cpsii);
+
+	if (val0 * val1 >= 0.0)
+	{
+		cerr << "bisection error: f(a)*f(b)>=0 \n";
+		return 0;
+	}
+	double EPS = 1.e-12;
+	while ((max - min) >= EPS)
+	{
+		a = (max + min) / 2.0;
+		if (dCrvtr(i, a, cpsii) == 0.0) { break; }
+		else{
+			if (val0 * dCrvtr(i, a, cpsii) < 0.0) {
+				max = a;
+			}
+			else {
+				min = a;
+			}
+
+		}
+	}
+	return a;
+
 }
+
+double dCrvtr(int i, double ti, EVec2d& cpsii)
+{
+	double value;									//使用Maxima求出曲率的导数关于ti的表达式
+	double t0, t1, t2, t3, t4, t5, t6, t7, t8, t9;
+
+	t0 = -3.0 * pow(ci0[i][1], 2.0) * ai[i] + 6.0 * cpsii[1] * ci0[i][1] * ai[i] - 3.0 * pow(cpsii[1], 2.0) * ai[i]
+		- 3.0 * pow(ci0[i][0], 2.0) * ai[i] + 6.0 * cpsii[0] * ci0[i][0] * ai[i] - 3.0 * pow(cpsii[0], 2.0) * ai[i]
+		+ 4.0 * pow(ci0[i][1], 2.0) - 8.0 * cpsii[1] * ci0[i][1] + 4.0 * pow(cpsii[1], 2.0) + 4.0 * pow(ci0[i][0], 2.0)
+		- 8.0 * cpsii[0] * ci0[i][0] + 4.0 * pow(cpsii[0] , 2.0);
+
+	t1 = (18.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0) - 18.0 * cpsii[1] * ci2[i][1] * pow(ai[i], 2.0)
+		- 18.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
+		+ 18.0 * cpsii[1] * ci0[i][1] * pow(ai[i], 2.0)
+		+ 18.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
+		- 18.0 * cpsii[0] * ci2[i][0] * pow(ai[i], 2.0)
+		- 18.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0)
+		+ 18.0 * cpsii[0] * ci0[i][0] * pow(ai[i], 2.0)
+		- 36.0 * ci0[i][1] * ci2[i][1] * ai[i]
+		+ 36.0 * cpsii[1] * ci2[i][1] * ai[i]
+		+ 48.0 * pow(ci0[i][1], 2.0) * ai[i]
+		- 60.0 * cpsii[1] * ci0[i][1] * ai[i]
+		+ 12.0 * pow(cpsii[1], 2.0) * ai[i]
+		- 36.0 * ci0[i][0] * ci2[i][0] * ai[i]
+		+ 36.0 * cpsii[0] * ci2[i][0] * ai[i]
+		+ 48.0 * pow(ci0[i][0], 2.0) * ai[i]
+		- 60.0 * cpsii[0] * ci0[i][0] * ai[i]
+		+ 12.0 * pow(cpsii[0], 2.0) * ai[i] + 18.0 * ci0[i][1] * ci2[i][1]
+		- 18.0 * cpsii[1] * ci2[i][1] - 30.0 * pow(ci0[i][1], 2.0)
+		+ 42.0 * cpsii[1] * ci0[i][1] - 12.0 * pow(cpsii[1], 2.0)
+		+ 18.0 * ci0[i][0] * ci2[i][0] - 18.0 * cpsii[0] * ci2[i][0]
+		- 30.0 * pow(ci0[i][0], 2.0) + 42.0 * cpsii[0] * ci0[i][0]
+		- 12.0 * pow(cpsii[0], 2.0));
+
+	t2 = -144.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0) + 144.0 * cpsii[1] * ci2[i][1] * pow(ai[i], 2.0)
+		+ 144.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
+		- 144.0 * cpsii[1] * ci0[i][1] * pow(ai[i], 2.0)
+		- 144.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
+		+ 144.0 * cpsii[0] * ci2[i][0] * pow(ai[i], 2.0)
+		+ 144.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0)
+		- 144.0 * cpsii[0] * ci0[i][0] * pow(ai[i], 2.0)
+		+ 258.0 * ci0[i][1] * ci2[i][1] * ai[i]
+		- 258.0 * cpsii[1] * ci2[i][1] * ai[i]
+		- 276.0 * pow(ci0[i][1], 2) * ai[i]
+		+ 294.0 * cpsii[1] * ci0[i][1] * ai[i]
+		- 18.0 * pow(cpsii[1], 2.0) * ai[i]
+		+ 258.0 * ci0[i][0] * ci2[i][0] * ai[i]
+		- 258.0 * cpsii[0] * ci2[i][0] * ai[i]
+		- 276.0 * pow(ci0[i][0], 2) * ai[i]
+		+ 294.0 * cpsii[0] * ci0[i][0] * ai[i]
+		- 18.0 * pow(cpsii[0], 2.0) * ai[i]
+		- 114.0 * ci0[i][1] * ci2[i][1]
+		+ 114.0 * cpsii[1] * ci2[i][1] + 126.0 * pow(ci0[i][1], 2.0)
+		- 138.0 * cpsii[1] * ci0[i][1] + 12.0 * pow(cpsii[1], 2.0)
+		- 114.0 * ci0[i][0] * ci2[i][0]
+		+ 114.0 * cpsii[0] * ci2[i][0] + 126.0 * pow(ci0[i][0], 2.0)
+		- 138.0 * cpsii[0] * ci0[i][0] + 12.0 * pow(cpsii[0], 2.0);
+
+	t3 = 54.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 3.0) - 108.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 3.0)
+		+ 54.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 3.0) + 54.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 3.0)
+		- 108.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 3.0)
+		+ 54.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 3.0) - 162.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 2.0)
+		+ 774.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0)
+		- 450.0 * cpsii[1] * ci2[i][1] * pow(ai[i], 2.0)
+		- 612.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
+		+ 450.0 * cpsii[1] * ci0[i][1] * pow(ai[i], 2.0)
+		- 162.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 2.0)
+		+ 774.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
+		- 450.0 * cpsii[0] * ci2[i][0] * pow(ai[i], 2.0)
+		- 612.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0)
+		+ 450.0 * cpsii[0] * ci0[i][0] * pow(ai[i], 2.0) + 162.0 * pow(ci2[i][1], 2.0) * ai[i]
+		- 1032.0 * ci0[i][1] * ci2[i][1] * ai[i]
+		+ 708.0 * cpsii[1] * ci2[i][1] * ai[i] + 882.0 * pow(ci0[i][1], 2.0) * ai[i]
+		- 732.0 * cpsii[1] * ci0[i][1] * ai[i] + 12.0 * pow(cpsii[1], 2.0) * ai[i]
+		+ 162.0 * pow(ci2[i][0], 2.0) * ai[i] - 1032.0 * ci0[i][0] * ci2[i][0] * ai[i]
+		+ 708.0 * cpsii[0] * ci2[i][0] * ai[i] + 882.0 * pow(ci0[i][0], 2.0) * ai[i]
+		- 732.0 * cpsii[0] * ci0[i][0] * ai[i] + 12.0 * pow(cpsii[0], 2.0) * ai[i]
+		- 54.0 * pow(ci2[i][1], 2.0) + 380.0 * ci0[i][1] * ci2[i][1]
+		- 272.0 * cpsii[1] * ci2[i][1] - 334.0 * pow(ci0[i][1], 2.0)
+		+ 288.0 * cpsii[1] * ci0[i][1] - 8.0 * pow(cpsii[1], 2.0) - 54.0 * pow(ci2[i][0], 2.0)
+		+ 380.0 * ci0[i][0] * ci2[i][0] - 272.0 * cpsii[0] * ci2[i][0]
+		- 334.0 * pow(ci0[i][0], 2.0) + 288.0 * cpsii[0] * ci0[i][0] - 8.0 * pow(cpsii[0], 2.0);
+
+	t4 = (-405.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 3.0)) + 810.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 3.0)
+		- 405.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 3.0) - 405.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 3.0)
+		+ 810.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 3.0)
+		- 405.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 3.0) + 1080.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 2.0)
+		- 2880.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0)
+		+ 720.0 * cpsii[1] * ci2[i][1] * pow(ai[i], 2.0)
+		+ 1800.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
+		- 720.0 * cpsii[1] * ci0[i][1] * pow(ai[i], 2.0)
+		+ 1080.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 2.0)
+		- 2880.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
+		+ 720.0 * cpsii[0] * ci2[i][0] * pow(ai[i], 2.0)
+		+ 1800.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0)
+		- 720.0 * cpsii[0] * ci0[i][0] * pow(ai[i], 2.0)
+		- 945.0 * pow(ci2[i][1], 2.0) * ai[i]
+		+ 2910.0 * ci0[i][1] * ci2[i][1] * ai[i]
+		- 1020.0 * cpsii[1] * ci2[i][1] * ai[i]
+		- 1965.0 * pow(ci0[i][1], 2.0) * ai[i]
+		+ 1020.0 * cpsii[1] * ci0[i][1] * ai[i]
+		- 945.0 * pow(ci2[i][0], 2.0) * ai[i]
+		+ 2910.0 * ci0[i][0] * ci2[i][0] * ai[i]
+		- 1020.0 * cpsii[0] * ci2[i][0] * ai[i]
+		- 1965.0 * pow(ci0[i][0], 2.0) * ai[i]
+		+ 1020.0 * cpsii[0] * ci0[i][0] * ai[i] + 270.0 * pow(ci2[i][1], 2.0)
+		- 900.0 * ci0[i][1] * ci2[i][1] + 360.0 * cpsii[1] * ci2[i][1]
+		+ 630.0 * pow(ci0[i][1], 2.0) - 360.0 * cpsii[1] * ci0[i][1]
+		+ 270.0 * pow(ci2[i][0], 2.0) - 900.0 * ci0[i][0] * ci2[i][0]
+		+ 360.0 * cpsii[0] * ci2[i][0] + 630.0 * pow(ci0[i][0], 2.0)
+		- 360.0 * cpsii[0] * ci0[i][0];
+
+	t5 = 1296.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 3.0) - 2592.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 3.0)
+		+ 1296.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 3.0) + 1296.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 3.0)
+		- 2592.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 3.0)
+		+ 1296.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 3.0) - 3114.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 2.0)
+		+ 6822.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0)
+		- 594.0 * cpsii[1] * ci2[i][1] * pow(ai[i], 2.0)
+		- 3708.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
+		+ 594.0 * cpsii[1] * ci0[i][1] * pow(ai[i], 2.0)
+		- 3114.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 2.0)
+		+ 6822.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
+		- 594.0 * cpsii[0] * ci2[i][0] * pow(ai[i], 2.0)
+		- 3708.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0)
+		+ 594.0 * cpsii[0] * ci0[i][0] * pow(ai[i], 2.0)
+		+ 2454.0 * pow(ci2[i][1], 2.0) * ai[i]
+		- 5700.0 * ci0[i][1] * ci2[i][1] * ai[i]
+		+ 792.0 * cpsii[1] * ci2[i][1] * ai[i]
+		+ 3246.0 * pow(ci0[i][1], 2.0) * ai[i]
+		- 792.0 * cpsii[1] * ci0[i][1] * ai[i]
+		+ 2454.0 * pow(ci2[i][0], 2.0) * ai[i]
+		- 5700.0 * ci0[i][0] * ci2[i][0] * ai[i]
+		+ 792.0 * cpsii[0] * ci2[i][0] * ai[i]
+		+ 3246.0 * pow(ci0[i][0], 2.0) * ai[i]
+		- 792.0 * cpsii[0] * ci0[i][0] * ai[i] - 636 * pow(ci2[i][1], 2.0)
+		+ 1536.0 * ci0[i][1] * ci2[i][1] - 264 * cpsii[1] * ci2[i][1]
+		- 900.0 * pow(ci0[i][1], 2.0) + 264 * cpsii[1] * ci0[i][1]
+		- 636.0 * pow(ci2[i][0], 2.0) + 1536 * ci0[i][0] * ci2[i][0]
+		- 264.0 * cpsii[0] * ci2[i][0] - 900 * pow(ci0[i][0], 2.0)
+		+ 264.0 * cpsii[0] * ci0[i][0];
+
+	t6 = (-2268.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 3.0)) + 4536.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 3.0)
+		- 2268.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 3.0)
+		- 2268.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 3.0)
+		+ 4536.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 3.0)
+		- 2268.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 3.0)
+		+ 5004.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 2.0)
+		- 10206.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0)
+		+ 198.0 * cpsii[1] * ci2[i][1] * pow(ai[i], 2.0)
+		+ 5202.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
+		- 198.0 * cpsii[1] * ci0[i][1] * pow(ai[i], 2.0)
+		+ 5004.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 2.0)
+		- 10206.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
+		+ 198.0 * cpsii[0] * ci2[i][0] * pow(ai[i], 2.0)
+		+ 5202.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0)
+		- 198.0 * cpsii[0] * ci0[i][0] * pow(ai[i], 2.0)
+		- 3648.0 * pow(ci2[i][1], 2.0) * ai[i]
+		+ 7560.0 * ci0[i][1] * ci2[i][1] * ai[i]
+		- 264.0 * cpsii[1] * ci2[i][1] * ai[i]
+		- 3912.0 * pow(ci0[i][1], 2.0) * ai[i]
+		+ 264.0 * cpsii[1] * ci0[i][1] * ai[i]
+		- 3648.0 * pow(ci2[i][0], 2.0) * ai[i]
+		+ 7560.0 * ci0[i][0] * ci2[i][0] * ai[i]
+		- 264.0 * cpsii[0] * ci2[i][0] * ai[i]
+		- 3912.0 * pow(ci0[i][0], 2.0) * ai[i]
+		+ 264.0 * cpsii[0] * ci0[i][0] * ai[i] + 880.0 * pow(ci2[i][1], 2.0)
+		- 1848.0 * ci0[i][1] * ci2[i][1] + 88.0 * cpsii[1] * ci2[i][1]
+		+ 968.0 * pow(ci0[i][1], 2.0) - 88.0 * cpsii[1] * ci0[i][1]
+		+ 880.0 * pow(ci2[i][0], 2.0) - 1848.0 * ci0[i][0] * ci2[i][0]
+		+ 88.0 * cpsii[0] * ci2[i][0] + 968.0 * pow(ci0[i][0], 2.0)
+		- 88.0 * cpsii[0] * ci0[i][0];
+
+	t7 = 2268.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 3.0) - 4536.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 3.0)
+		+ 2268.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 3.0) + 2268.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 3.0)
+		- 4536.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 3.0)
+		+ 2268.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 3.0) - 4698.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 2.0)
+		+ 9396.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0)
+		- 4698.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0) - 4698.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 2.0)
+		+ 9396.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
+		- 4698.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0) + 3240.0 * pow(ci2[i][1], 2.0) * ai[i]
+		- 6480.0 * ci0[i][1] * ci2[i][1] * ai[i]
+		+ 3240.0 * pow(ci0[i][1], 2.0) * ai[i] + 3240.0 * pow(ci2[i][0], 2.0) * ai[i]
+		- 6480.0 * ci0[i][0] * ci2[i][0] * ai[i]
+		+ 3240.0 * pow(ci0[i][0], 2.0) * ai[i] - 744.0 * pow(ci2[i][1], 2.0)
+		+ 1488.0 * ci0[i][1] * ci2[i][1] - 744.0 * pow(ci0[i][1], 2.0)
+		- 744.0 * pow(ci2[i][0], 2.0) + 1488.0 * ci0[i][0] * ci2[i][0]
+		- 744.0 * pow(ci0[i][0], 2.0);
+
+	t8 = (-1215.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 3.0)) + 2430.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 3.0)
+		- 1215.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 3.0)
+		- 1215.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 3.0)
+		+ 2430.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 3.0)
+		- 1215.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 3.0)
+		+ 2430.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 2.0)
+		- 4860.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0)
+		+ 2430.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
+		+ 2430.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 2.0)
+		- 4860.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
+		+ 2430.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0) - 1620.0 * pow(ci2[i][1], 2.0) * ai[i]
+		+ 3240.0 * ci0[i][1] * ci2[i][1] * ai[i]
+		- 1620.0 * pow(ci0[i][1], 2.0) * ai[i] - 1620.0 * pow(ci2[i][0], 2.0) * ai[i]
+		+ 3240.0 * ci0[i][0] * ci2[i][0] * ai[i]
+		- 1620.0 * pow(ci0[i][0], 2.0) * ai[i] + 360.0 * pow(ci2[i][1], 2.0)
+		- 720.0 * ci0[i][1] * ci2[i][1] + 360.0 * pow(ci0[i][1], 2.0)
+		+ 360.0 * pow(ci2[i][0], 2.0) - 720.0 * ci0[i][0] * ci2[i][0]
+		+ 360.0 * pow(ci0[i][0], 2.0);
+
+	t9 = 270.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 3.0) - 540.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 3.0)
+		+ 270.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 3.0)
+		+ 270.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 3.0)
+		- 540.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 3.0)
+		+ 270.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 3.0)
+		- 540.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 2.0)
+		+ 1080.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0)
+		- 540.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
+		- 540.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 2.0)
+		+ 1080.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
+		- 540.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0) + 360.0 * pow(ci2[i][1], 2.0) * ai[i]
+		- 720.0 * ci0[i][1] * ci2[i][1] * ai[i]
+		+ 360.0 * pow(ci0[i][1], 2.0) * ai[i] + 360.0 * pow(ci2[i][0], 2.0) * ai[i]
+		- 720.0 * ci0[i][0] * ci2[i][0] * ai[i]
+		+ 360.0 * pow(ci0[i][0], 2.0) * ai[i] - 80.0 * pow(ci2[i][1], 2.0)
+		+ 160.0 * ci0[i][1] * ci2[i][1] - 80.0 * pow(ci0[i][1], 2.0)
+		- 80.0 * pow(ci2[i][0], 2.0) + 160.0 * ci0[i][0] * ci2[i][0]
+		- 80.0 * pow(ci0[i][0], 2.0);
+
+	value = t0 + ti * t1 + pow(ti, 2.0) * t2 + pow(ti, 3.0) * t3 
+		+ pow(ti, 4.0) * t4 + pow(ti, 5.0) * t5 + pow(ti, 6.0) * t6 
+		+ pow(ti, 7.0) * t7 + pow(ti, 8.0) * t8 + pow(ti, 9.0) * t9;
+
+	return value;
+
+}
+
+
 void calculate_lambdai(int n)
 {
-	vector<double> prevLambdai = lambdai;
+
 	for (int i = 0; i < n; ++i)
 	{
 		
 		int nextI = (i + 1) % n;
-		double A = sqrt(TrgArea(ci0[i], ci1[i], ci1[nextI]));
-		double B = sqrt(TrgArea(ci1[i], ci1[nextI], ci2[nextI]));
-		lambdai[i] = A / (A + B);
+		double A = (1.0 - ai[i]) * TrgArea(ci0[i], ci1[i], ci1[nextI]);
+		double B = (1.0 - ai[nextI]) * TrgArea(ci1[i], ci1[nextI], ci2[nextI]);
+		lambdai[i] = sqrt(A) / (sqrt(A)+ (ai[i] / ai[nextI]) * sqrt(B));
+		if (lambdai[i] < 0.0)
+		{
+			lambdai[i] = 0.0;
+		}
+		else if (lambdai[i] > 1.0)
+		{
+			lambdai[i] = 1.0;
+		}
+
 	}
+
 }
 
 void opencalculate_lambdai(int n)
 {
 	for (int i = 0; i < n-1; i++)
 	{
-		double A = sqrt(TrgArea(ci0[i],ci1[i],ci1[i+1]));
-		double B = sqrt(TrgArea(ci1[i],ci1[i+1],ci2[i+1]));
-		lambdai[i] = A / (A + B);
+		double A = (1. - ai[i]) * TrgArea(ci0[i], ci1[i], ci1[i + 1]);
+		double B = (1. - ai[i + 1]) * TrgArea(ci1[i], ci1[i + 1], ci2[i + 1]);
+		lambdai[i] = sqrt(A) / (sqrt(A) + (ai[i] / ai[i + 1]) * sqrt(B));
+		if (lambdai[i] < 0.0)
+		{
+			lambdai[i] = 0.0;
+		}
+		else if (lambdai[i] > 1.0)
+		{
+			lambdai[i] = 1.0;
+		}
 	}
 }
 
@@ -692,7 +925,8 @@ void opencalculate_ci1(int n, vecEg2dd& cpsi)
 	A.setZero();
 	if (n == 1)
 	{
-		ci1[0] = (cpsi[1] - pow(1 - ti[0], 2) * cpsi[0] - pow(ti[0], 2) * cpsi[2]) / (2 * ti[0] * (1 - ti[0]));
+		ci1[0] = (cpsi[1] - pow(1. - ti[0], 3.) * cpsi[0] - 3. * (1. - ti[0]) * ti[0] * (1. - ai[0]) * ((1. - ti[0]) * cpsi[0] + ti[0] * cpsi[2]) - pow(ti[0], 3.) * cpsi[2])
+			/ (3. * ai[0] * (1. - ti[0]) * ti[0]);
 		return;
 	}
 	
@@ -700,23 +934,31 @@ void opencalculate_ci1(int n, vecEg2dd& cpsi)
 	{
 		if (i == 0)
 		{
-			A(0, 0) = 2.0 * ti[0] * (1.0 - ti[0]) + ti[0] * ti[0] * (1.0 - lambdai[0]);
-			A(0, 1) = ti[0] * ti[0] * lambdai[0];
-			b1[0] = cpsi[1][0] - pow(1.0 - ti[0], 2) * cpsi[0][0];
-			b2[0] = cpsi[1][1] - pow(1.0 - ti[0], 2) * cpsi[0][1];
+			A(0, 0) = 3. * pow(1. - ti[0], 2.) * ti[0] * ai[0] 
+				+ 3. * (1. - ti[0]) * pow(ti[0], 2.) * (ai[0] + (1. - ai[0]) * (1. - lambdai[0])) 
+				+ pow(ti[0], 3.) * (1. - lambdai[0]);
+			A(0, 1) = 3. * (1. - ti[0]) * pow(ti[0], 2.) * (1. - ai[0]) * lambdai[0] 
+				+ pow(ti[0], 3.) * lambdai[0];
+			b1[0] = cpsi[1][0] - pow(1.0 - ti[0], 3.) * cpsi[0][0] - 3. * pow(1. - ti[0], 2.) * ti[0] * (1. - ai[0]) * cpsi[0][0];
+			b2[0] = cpsi[1][1] - pow(1.0 - ti[0], 3.) * cpsi[0][1] - 3. * pow(1. - ti[0], 2.) * ti[0] * (1. - ai[0]) * cpsi[0][1];
 		}
 		else if (i == n - 1)
 		{
-			A(n - 1, n - 2) = pow(1.0 - ti[n - 1], 2) * (1.0 - lambdai[n - 2]);
-			A(n - 1, n - 1) = pow(1.0 - ti[n - 1], 2) * lambdai[n - 2] + 2.0 * ti[n - 1] * (1.0 - ti[n - 1]);
-			b1[n - 1] = cpsi[n][0] - ti[n - 1] * ti[n - 1] * cpsi[n + 1][0];
-			b2[n - 1] = cpsi[n][1] - ti[n - 1] * ti[n - 1] * cpsi[n + 1][1];
+			A(n - 1, n - 2) = pow(1. - ti[n - 1], 3.) * (1. - lambdai[n - 2]) 
+				+ 3. * pow(1. - ti[n - 1], 2.) * ti[n - 1] * (1. - ai[n - 1]) * (1. - lambdai[n - 2]);
+			A(n - 1, n - 1) = pow(1. - ti[n - 1], 3.) * lambdai[n - 2] 
+				+ 3. * pow(1. - ti[n - 1], 2.) * ti[n - 1] * ((1. - ai[n - 1]) * lambdai[n - 2] + ai[n - 1]) 
+				+ 3. * (1. - ti[n - 1]) * pow(ti[n - 1], 2.) * ai[n - 1];
+			b1[n - 1] = cpsi[n][0] - (3. * (1. - ti[n - 1]) * pow(ti[n - 1], 2.) * (1. - ai[n - 1]) + pow(ti[n - 1], 3.)) * cpsi[n + 1][0];
+			b2[n - 1] = cpsi[n][1] - (3. * (1. - ti[n - 1]) * pow(ti[n - 1], 2.) * (1. - ai[n - 1]) + pow(ti[n - 1], 3.)) * cpsi[n + 1][1];
 		}
 		else
 		{
-			A(i, i - 1) = (1.0 - lambdai[i - 1]) * pow(1.0 - ti[i], 2);
-			A(i, i) = lambdai[i - 1] * pow(1.0 - ti[i], 2) + (2.0 - (1.0 + lambdai[i]) * ti[i]) * ti[i];
-			A(i, i + 1) = lambdai[i] * ti[i] * ti[i];
+			A(i, i - 1) = pow(1. - ti[i], 3.) * (1. - lambdai[i - 1]) + 3. * pow(1. - ti[i], 2.) * ti[i] * (1. - ai[i]) * (1. - lambdai[i - 1]);
+			A(i, i) = pow(1. - ti[i], 3.) * lambdai[i - 1] + 3. * pow(1. - ti[i], 2.) * ti[i] * ((1. - ai[i]) * lambdai[i - 1] + ai[i])
+				+ 3. * (1. - ti[i]) * pow(ti[i], 2.) * ((1. - ai[i]) * (1. - lambdai[i]) + ai[i])
+				+ pow(ti[i], 3.) * (1. - lambdai[i]);
+			A(i, i + 1) = 3. * (1. - ti[i]) * pow(ti[i], 2.) * (1. - ai[i]) * lambdai[i] + pow(ti[i], 3.) * lambdai[i];
 			b1[i] = cpsi[i + 1][0];
 			b2[i] = cpsi[i + 1][1];
 		}
@@ -805,6 +1047,7 @@ void OnMouse(int button, int state, int x, int y)
 						
 		}*/
 		cps.push_back(EVec2d(x, winHeight - y));
+		//ai.push_back(defaultai);
 		
 	}
 	/*else if (state == GLUT_UP)
