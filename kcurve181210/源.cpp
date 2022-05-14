@@ -8,6 +8,7 @@
 //#include <freeglut.h>
 //#include <freeglut_ext.h>
 /*使用二分法求ti 20220513*/
+/*实现画曲率直方图 20220514*/
 
 
 using namespace std;
@@ -136,7 +137,7 @@ void myDisplay()
 			for (int j = 0; j < Num; ++j)
 			{
 				drawQuBzr(ci0[j], ci1[j], ci2[j],ai[j]);
-				//drawCrvtrVctrClmn(ci0[j], ci1[j], ci2[j], ai[j]);
+				drawCrvtrVctrClmn(ci0[j], ci1[j], ci2[j], ai[j]);
 			}
 		}
 		if (!closedflag)
@@ -145,7 +146,7 @@ void myDisplay()
 			for (int j = 0; j < Num-2; ++j)
 			{
 				drawQuBzr(ci0[j], ci1[j], ci2[j],ai[j]);
-				//drawCrvtrVctrClmn(ci0[j], ci1[j], ci2[j], ai[j]);
+				drawCrvtrVctrClmn(ci0[j], ci1[j], ci2[j], ai[j]);
 			}
 		}
 		
@@ -234,7 +235,7 @@ void myDisplay()
 
 	for (int i = 0; i < num1; ++i)
 	{
-		glColor3f(1, 0, 1);		//粉红色
+		glColor3f(0, 1, 0);		//绿色
 		glLineWidth(3);
 		glBegin(GL_LINE_STRIP);			//画线
 
@@ -250,7 +251,7 @@ void myDisplay()
 
 	for (int i = 0; i < num2; ++i)
 	{
-		glColor3f(1, 0, 1);		//粉红色
+		glColor3f(0, 1, 0);		//绿色
 		glLineWidth(3);
 		glBegin(GL_LINE_LOOP);			//画线
 
@@ -314,11 +315,11 @@ void drawCrvtrVctrClmn(EVec2d& ci0, EVec2d& ci1, EVec2d& ci2, double ai)
 	
 	int n = 20;			//画曲率直方图
 	vecEg2dd k0;
-	k0.resize(n);
+	k0.resize(n+1);
 
 	double t;
 	double h = 1. / n;
-	double coeff = 2000.;
+	double coeff = 3000.;
 	double norm;
 	double val0;
 
@@ -345,7 +346,7 @@ void drawCrvtrVctrClmn(EVec2d& ci0, EVec2d& ci1, EVec2d& ci2, double ai)
 	}
 
 	//画曲率端点连线
-	glColor3f(218/255, 112/255, 214/255);		//紫色
+	glColor3f(0.8549, 0.4392, 0.839215);		//紫色
 	glLineWidth(2);
 	glBegin(GL_LINE_STRIP);
 	for (int i = 0; i <= n; ++i)
@@ -358,7 +359,7 @@ void drawCrvtrVctrClmn(EVec2d& ci0, EVec2d& ci1, EVec2d& ci2, double ai)
 	glEnd();
 
 	//画曲率长度线
-	glColor3f(218 / 255, 112 / 255, 214 / 255);		//紫色
+	glColor3f(0.8549, 0.4392, 0.839215);		//紫色
 	glLineWidth(2);
 	glBegin(GL_LINES);
 	for (int i = 0; i <= n; ++i)
