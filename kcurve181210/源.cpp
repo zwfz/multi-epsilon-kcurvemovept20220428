@@ -18,6 +18,7 @@ typedef Eigen::Vector2d EVec2d;
 typedef vector<EVec2d, Eigen::aligned_allocator<EVec2d>> vecEg2dd;
 
 typedef vector<vecEg2dd, Eigen::aligned_allocator<vecEg2dd>> VvecEg2dd;			//二维点列的矩阵容器
+typedef vector<vector<double>> Vvector;			//double的矩阵容器
 
 #define PI 3.14159265;
 
@@ -34,7 +35,7 @@ vector<double> lambdai;
 vector<double> theta;
 vector<double> ai;
 
-vector<vector<double>> Mtrxai;				//ai的矩阵
+Vvector Mtrxai_o,Mtrxai_c;				//ai的矩阵
 
 double defaultai = 2. / 3.;
 
@@ -46,28 +47,28 @@ int Num,i0;
 bool flag0 = false;
 bool closedflag = true;
 
-void closed_ekcurve(vecEg2dd& cpsi);
-void opened_ekcurve(vecEg2dd& cpsi);
+void closed_ekcurve(vecEg2dd& cpsi, vector<double>& ai);
+void opened_ekcurve(vecEg2dd& cpsi, vector<double>& ai);
 
 void calculate_ci02(int n);
 void opencalculate_ci02(int n);
-void calculate_ci1(int n, vecEg2dd& cpsi);
-void opencalculate_ci1(int n, vecEg2dd& cpsi);
-void calculate_ti(int n, vecEg2dd& cpsi);
-void opencalculate_ti(int n, vecEg2dd& cpsi);
-void calculate_lambdai(int n);
-void opencalculate_lambdai(int n);
+void calculate_ci1(int n, vecEg2dd& cpsi, vector<double>& ai);
+void opencalculate_ci1(int n, vecEg2dd& cpsi, vector<double>& ai);
+void calculate_ti(int n, vecEg2dd& cpsi, vector<double>& ai);
+void opencalculate_ti(int n, vecEg2dd& cpsi, vector<double>& ai);
+void calculate_lambdai(int n, vector<double>& ai);
+void opencalculate_lambdai(int n, vector<double>& ai);
 double TrgArea(const EVec2d&p0, const EVec2d&p1, const EVec2d&p2);
 
-bool closedCheckCvrg(int n, vecEg2dd& cpsi);
-bool openCheckCvrg(int n, vecEg2dd& cpsi);
+bool closedCheckCvrg(int n, vecEg2dd& cpsi, vector<double>& ai);
+bool openCheckCvrg(int n, vecEg2dd& cpsi, vector<double>& ai);
 
 bool CheckItr(const vecEg2dd &prevci1,int n);
 void drawQuBzr(EVec2d &ci0, EVec2d &ci1, EVec2d &ci2, double ai);
 void drawCrvtrVctrClmn(EVec2d& ci0, EVec2d& ci1, EVec2d& ci2, double ai);
 
-double bisection(int i, EVec2d& cpsii);
-double dCrvtr(int i, double ti, EVec2d& cpsii);
+double bisection(int i, EVec2d& cpsii, double aii);
+double dCrvtr(int i, double ti, EVec2d& cpsii, double aii);
 
 //bool checkpt(int x, int y);
 //void mouseMotionPT(int x, int y);
@@ -120,6 +121,37 @@ void myDisplay()
 
 	glEnd();
 
+	//屏幕显示ai值
+	glColor3d(1., 0.502, 0);		//橘黄
+	if (closedflag)				//闭式ek-curve
+	{
+		for (int i = 0; i < Num; ++i)
+		{
+			string str = to_string(ai[i]);
+			glRasterPos2d(cps[i][0]+30., cps[i][1]+30.);
+			for (char& c : str)
+			{
+				glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, c);
+			}
+
+		}
+	}
+	else
+	{
+		for (int i = 0; i < Num-2; ++i)		//开式ek-curve
+		{
+			string str = to_string(ai[i]);
+			glRasterPos2d(cps[i+1][0]+30., cps[i+1][1]+30.);
+			for (char& c : str)
+			{
+				glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, c);
+			}
+
+		}
+	}
+	
+	
+
 	glColor3f(0, 1, 1);		//蓝色
 	glLineWidth(3);
 	glBegin(GL_LINE_STRIP);   //画线
@@ -133,7 +165,7 @@ void myDisplay()
 	{
 		if ((Num>3) && closedflag)
 		{
-			closed_ekcurve(cps);
+			closed_ekcurve(cps,ai);
 			for (int j = 0; j < Num; ++j)
 			{
 				drawQuBzr(ci0[j], ci1[j], ci2[j],ai[j]);
@@ -142,7 +174,7 @@ void myDisplay()
 		}
 		if (!closedflag)
 		{
-			opened_ekcurve(cps);
+			opened_ekcurve(cps,ai);
 			for (int j = 0; j < Num-2; ++j)
 			{
 				drawQuBzr(ci0[j], ci1[j], ci2[j],ai[j]);
@@ -158,14 +190,17 @@ void myDisplay()
 		if (closedflag)
 		{
 			MtrxCps_c.push_back({ cps });			//闭式eK-curve点矩阵
+			Mtrxai_c.push_back({ ai });				//ai值矩阵
 		}
 		if (!closedflag)
 		{
 			MtrxCps_o.push_back({ cps });			//开式eK-curve点矩阵
+			Mtrxai_o.push_back({ ai });				//ai值矩阵
 		}
 		
 		flag0 = false;
 		cps.clear();
+		ai.clear();
 	}
 	
 
@@ -233,56 +268,56 @@ void myDisplay()
 	}
 
 
-	for (int i = 0; i < num1; ++i)
-	{
-		glColor3f(0, 1, 0);		//绿色
-		glLineWidth(3);
-		glBegin(GL_LINE_STRIP);			//画线
+	//for (int i = 0; i < num1; ++i)
+	//{
+	//	glColor3f(0, 1, 0);		//绿色
+	//	glLineWidth(3);
+	//	glBegin(GL_LINE_STRIP);			//画线
 
-		int n = MtrxCps_o[i].size();
+	//	int n = MtrxCps_o[i].size();
 
-		for (int j = 0; j < n; j++)
-		{
-			glVertex2d(MtrxCps_o[i][j][0], MtrxCps_o[i][j][1]);
-		}
-		//glVertex2d(MtrxCps[i][0][0], MtrxCps[i][0][1]);
-		glEnd();
-	}
+	//	for (int j = 0; j < n; j++)
+	//	{
+	//		glVertex2d(MtrxCps_o[i][j][0], MtrxCps_o[i][j][1]);
+	//	}
+	//	//glVertex2d(MtrxCps[i][0][0], MtrxCps[i][0][1]);
+	//	glEnd();
+	//}
 
-	for (int i = 0; i < num2; ++i)
-	{
-		glColor3f(0, 1, 0);		//绿色
-		glLineWidth(3);
-		glBegin(GL_LINE_LOOP);			//画线
+	//for (int i = 0; i < num2; ++i)
+	//{
+	//	glColor3f(0, 1, 0);		//绿色
+	//	glLineWidth(3);
+	//	glBegin(GL_LINE_LOOP);			//画线
 
-		int n = MtrxCps_c[i].size();
+	//	int n = MtrxCps_c[i].size();
 
-		for (int j = 0; j < n; j++)
-		{
-			glVertex2d(MtrxCps_c[i][j][0], MtrxCps_c[i][j][1]);
-		}
-		//glVertex2d(MtrxCps[i][0][0], MtrxCps[i][0][1]);
-		glEnd();
-	}
+	//	for (int j = 0; j < n; j++)
+	//	{
+	//		glVertex2d(MtrxCps_c[i][j][0], MtrxCps_c[i][j][1]);
+	//	}
+	//	//glVertex2d(MtrxCps[i][0][0], MtrxCps[i][0][1]);
+	//	glEnd();
+	//}
 
 	for (int i = 0; i < num1; ++i)			//画多条开式ek-curve
 	{
-		opened_ekcurve(MtrxCps_o[i]);
+		opened_ekcurve(MtrxCps_o[i],Mtrxai_o[i]);
 		int n = MtrxCps_o[i].size();
 		for (int j = 0; j < n-2; j++)
 		{
-			drawQuBzr(ci0[j], ci1[j], ci2[j],ai[j]);
+			drawQuBzr(ci0[j], ci1[j], ci2[j],Mtrxai_o[i][j]);
 		}
 
 	}
 
 	for (int i = 0; i < num2; ++i)			//画多条闭式ek-curve
 	{
-		closed_ekcurve(MtrxCps_c[i]);
+		closed_ekcurve(MtrxCps_c[i],Mtrxai_c[i]);
 		int n = MtrxCps_c[i].size();
 		for (int j = 0; j < n; j++)
 		{
-			drawQuBzr(ci0[j], ci1[j], ci2[j],ai[j]);
+			drawQuBzr(ci0[j], ci1[j], ci2[j],Mtrxai_c[i][j]);
 		}
 
 	}
@@ -346,7 +381,7 @@ void drawCrvtrVctrClmn(EVec2d& ci0, EVec2d& ci1, EVec2d& ci2, double ai)
 	}
 
 	//画曲率端点连线
-	glColor3f(0.8549, 0.4392, 0.839215);		//紫色
+	glColor3d(0.8549, 0.4392, 0.839215);		//紫色
 	glLineWidth(2);
 	glBegin(GL_LINE_STRIP);
 	for (int i = 0; i <= n; ++i)
@@ -359,7 +394,7 @@ void drawCrvtrVctrClmn(EVec2d& ci0, EVec2d& ci1, EVec2d& ci2, double ai)
 	glEnd();
 
 	//画曲率长度线
-	glColor3f(0.8549, 0.4392, 0.839215);		//紫色
+	glColor3d(0.8549, 0.4392, 0.839215);		//紫色
 	glLineWidth(2);
 	glBegin(GL_LINES);
 	for (int i = 0; i <= n; ++i)
@@ -407,7 +442,7 @@ void myKeyboard(unsigned char key, int x, int y)
 
 
 
-void opened_ekcurve(vecEg2dd& cpsi)
+void opened_ekcurve(vecEg2dd& cpsi, vector<double>& ai)
 {
 	int PntNum = cpsi.size();
 	int CntNum = PntNum - 2;
@@ -422,8 +457,8 @@ void opened_ekcurve(vecEg2dd& cpsi)
 	ci2.clear();
 	ci2.resize(CntNum);
 
-	ai.clear();
-	ai.resize(CntNum, 2. / 3.);
+	/*ai.clear();
+	ai.resize(CntNum, 2. / 3.);*/
 
 	ci0[0] = cpsi[0];
 	ci2[CntNum - 1] = cpsi[PntNum - 1];
@@ -444,12 +479,12 @@ void opened_ekcurve(vecEg2dd& cpsi)
 		prevci1.resize(CntNum);
 		prevci1 = ci1;
 
-		opencalculate_ci1(CntNum, cpsi);
+		opencalculate_ci1(CntNum, cpsi, ai);
 
 		opencalculate_ci02(CntNum);
-		opencalculate_ti(CntNum, cpsi);
+		opencalculate_ti(CntNum, cpsi, ai);
 
-		opencalculate_lambdai(CntNum);
+		opencalculate_lambdai(CntNum, ai);
 		++counter;
 		if (CheckItr(prevci1, CntNum))
 		{
@@ -458,11 +493,11 @@ void opened_ekcurve(vecEg2dd& cpsi)
 		}
 
 
-	} while (counter < ITER_NUM && !openCheckCvrg(CntNum, cpsi));
+	} while (counter < ITER_NUM && !openCheckCvrg(CntNum, cpsi, ai));
 
 }
 
-void closed_ekcurve(vecEg2dd& cpsi)
+void closed_ekcurve(vecEg2dd& cpsi, vector<double>& ai)
 {
 	int numi = cpsi.size();
 	lambdai.clear();
@@ -476,8 +511,8 @@ void closed_ekcurve(vecEg2dd& cpsi)
 	ci2.clear();
 	ci2.resize(numi);
 	
-	ai.clear();
-	ai.resize(numi, 2. / 3.);
+	/*ai.clear();
+	ai.resize(numi, 2. / 3.);*/
 	
 
 	ci1 = cpsi;
@@ -490,17 +525,17 @@ void closed_ekcurve(vecEg2dd& cpsi)
 		prevci1.resize(numi);
 		prevci1 = ci1;
 
-		calculate_ci1(numi, cpsi);
+		calculate_ci1(numi, cpsi,ai);
 		calculate_ci02(numi);
-		calculate_ti(numi, cpsi);
-		calculate_lambdai(numi);
+		calculate_ti(numi, cpsi,ai);
+		calculate_lambdai(numi, ai);
 		++counter;
 		if (CheckItr(prevci1, numi))
 		{
 			cout << "converge" << endl;
 			break;
 		}
-	} while (counter < ITER_NUM && !closedCheckCvrg(numi, cpsi));
+	} while (counter < ITER_NUM && !closedCheckCvrg(numi, cpsi, ai));
 	
 }
 
@@ -516,7 +551,7 @@ bool CheckItr(const vecEg2dd &prevci1,int n)
 	return s < 1.e-4;
 }
 
-bool openCheckCvrg(int n, vecEg2dd& cpsi)
+bool openCheckCvrg(int n, vecEg2dd& cpsi, vector<double>& ai)
 {
 	EVec2d cti;
 
@@ -537,7 +572,7 @@ bool openCheckCvrg(int n, vecEg2dd& cpsi)
 	return true;
 }
 
-bool closedCheckCvrg(int n, vecEg2dd& cpsi)
+bool closedCheckCvrg(int n, vecEg2dd& cpsi, vector<double>& ai)
 {
 	EVec2d cti;
 	
@@ -570,11 +605,11 @@ bool closedCheckCvrg(int n, vecEg2dd& cpsi)
 	
 	return true;
 }
-void calculate_ti(int n, vecEg2dd& cpsi)
+void calculate_ti(int n, vecEg2dd& cpsi, vector<double>& ai)
 {
 	for (int i = 0; i < n; ++i)
 	{
-		ti[i] = bisection(i, cpsi[i]);
+		ti[i] = bisection(i, cpsi[i],ai[i]);
 		if (ti[i] < 0.0)
 		{
 			ti[i] = 0.0;
@@ -587,11 +622,11 @@ void calculate_ti(int n, vecEg2dd& cpsi)
 	
 }
 
-void opencalculate_ti(int n, vecEg2dd& cpsi)
+void opencalculate_ti(int n, vecEg2dd& cpsi, vector<double>& ai)
 {
 	for (int i = 0; i < n; ++i)
 	{
-		ti[i] = bisection(i, cpsi[i+1]);
+		ti[i] = bisection(i, cpsi[i+1],ai[i]);
 		if (ti[i] < 0.0)
 		{
 			ti[i] = 0.0;
@@ -603,14 +638,14 @@ void opencalculate_ti(int n, vecEg2dd& cpsi)
 	}
 }
 
-double bisection(int i,EVec2d& cpsii)
+double bisection(int i,EVec2d& cpsii, double aii)
 {
 	double a;					//二分法求曲率的导数为零时ti的值，即曲率极值处的ti值
 	double max = 1.0;
 	double min = 0.0;
 	double val0, val1;
-	val0 = dCrvtr(i, min, cpsii);
-	val1 = dCrvtr(i, max, cpsii);
+	val0 = dCrvtr(i, min, cpsii,aii);
+	val1 = dCrvtr(i, max, cpsii,aii);
 
 	if (val0 * val1 >= 0.0)
 	{
@@ -621,9 +656,9 @@ double bisection(int i,EVec2d& cpsii)
 	while ((max - min) >= EPS)
 	{
 		a = (max + min) / 2.0;
-		if (dCrvtr(i, a, cpsii) == 0.0) { break; }
+		if (dCrvtr(i, a, cpsii, aii) == 0.0) { break; }
 		else{
-			if (val0 * dCrvtr(i, a, cpsii) < 0.0) {
+			if (val0 * dCrvtr(i, a, cpsii, aii) < 0.0) {
 				max = a;
 			}
 			else {
@@ -636,56 +671,56 @@ double bisection(int i,EVec2d& cpsii)
 
 }
 
-double dCrvtr(int i, double ti, EVec2d& cpsii)
+double dCrvtr(int i, double ti, EVec2d& cpsii, double aii)
 {
 	double value;									//使用Maxima求出曲率的导数关于ti的表达式
 	double t0, t1, t2, t3, t4, t5, t6, t7, t8, t9;
 
-	t0 = -3.0 * pow(ci0[i][1], 2.0) * ai[i] + 6.0 * cpsii[1] * ci0[i][1] * ai[i] - 3.0 * pow(cpsii[1], 2.0) * ai[i]
-		- 3.0 * pow(ci0[i][0], 2.0) * ai[i] + 6.0 * cpsii[0] * ci0[i][0] * ai[i] - 3.0 * pow(cpsii[0], 2.0) * ai[i]
+	t0 = -3.0 * pow(ci0[i][1], 2.0) * aii + 6.0 * cpsii[1] * ci0[i][1] * aii - 3.0 * pow(cpsii[1], 2.0) * aii
+		- 3.0 * pow(ci0[i][0], 2.0) * aii + 6.0 * cpsii[0] * ci0[i][0] * aii - 3.0 * pow(cpsii[0], 2.0) * aii
 		+ 4.0 * pow(ci0[i][1], 2.0) - 8.0 * cpsii[1] * ci0[i][1] + 4.0 * pow(cpsii[1], 2.0) + 4.0 * pow(ci0[i][0], 2.0)
 		- 8.0 * cpsii[0] * ci0[i][0] + 4.0 * pow(cpsii[0] , 2.0);
 
-	t1 = (18.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0) - 18.0 * cpsii[1] * ci2[i][1] * pow(ai[i], 2.0)
-		- 18.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
-		+ 18.0 * cpsii[1] * ci0[i][1] * pow(ai[i], 2.0)
-		+ 18.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
-		- 18.0 * cpsii[0] * ci2[i][0] * pow(ai[i], 2.0)
-		- 18.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0)
-		+ 18.0 * cpsii[0] * ci0[i][0] * pow(ai[i], 2.0)
-		- 36.0 * ci0[i][1] * ci2[i][1] * ai[i]
-		+ 36.0 * cpsii[1] * ci2[i][1] * ai[i]
-		+ 48.0 * pow(ci0[i][1], 2.0) * ai[i]
-		- 60.0 * cpsii[1] * ci0[i][1] * ai[i]
-		+ 12.0 * pow(cpsii[1], 2.0) * ai[i]
-		- 36.0 * ci0[i][0] * ci2[i][0] * ai[i]
-		+ 36.0 * cpsii[0] * ci2[i][0] * ai[i]
-		+ 48.0 * pow(ci0[i][0], 2.0) * ai[i]
-		- 60.0 * cpsii[0] * ci0[i][0] * ai[i]
-		+ 12.0 * pow(cpsii[0], 2.0) * ai[i] + 18.0 * ci0[i][1] * ci2[i][1]
+	t1 = (18.0 * ci0[i][1] * ci2[i][1] * pow(aii, 2.0) - 18.0 * cpsii[1] * ci2[i][1] * pow(aii, 2.0)
+		- 18.0 * pow(ci0[i][1], 2.0) * pow(aii, 2.0)
+		+ 18.0 * cpsii[1] * ci0[i][1] * pow(aii, 2.0)
+		+ 18.0 * ci0[i][0] * ci2[i][0] * pow(aii, 2.0)
+		- 18.0 * cpsii[0] * ci2[i][0] * pow(aii, 2.0)
+		- 18.0 * pow(ci0[i][0], 2.0) * pow(aii, 2.0)
+		+ 18.0 * cpsii[0] * ci0[i][0] * pow(aii, 2.0)
+		- 36.0 * ci0[i][1] * ci2[i][1] * aii
+		+ 36.0 * cpsii[1] * ci2[i][1] * aii
+		+ 48.0 * pow(ci0[i][1], 2.0) * aii
+		- 60.0 * cpsii[1] * ci0[i][1] * aii
+		+ 12.0 * pow(cpsii[1], 2.0) * aii
+		- 36.0 * ci0[i][0] * ci2[i][0] * aii
+		+ 36.0 * cpsii[0] * ci2[i][0] * aii
+		+ 48.0 * pow(ci0[i][0], 2.0) * aii
+		- 60.0 * cpsii[0] * ci0[i][0] * aii
+		+ 12.0 * pow(cpsii[0], 2.0) * aii + 18.0 * ci0[i][1] * ci2[i][1]
 		- 18.0 * cpsii[1] * ci2[i][1] - 30.0 * pow(ci0[i][1], 2.0)
 		+ 42.0 * cpsii[1] * ci0[i][1] - 12.0 * pow(cpsii[1], 2.0)
 		+ 18.0 * ci0[i][0] * ci2[i][0] - 18.0 * cpsii[0] * ci2[i][0]
 		- 30.0 * pow(ci0[i][0], 2.0) + 42.0 * cpsii[0] * ci0[i][0]
 		- 12.0 * pow(cpsii[0], 2.0));
 
-	t2 = -144.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0) + 144.0 * cpsii[1] * ci2[i][1] * pow(ai[i], 2.0)
-		+ 144.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
-		- 144.0 * cpsii[1] * ci0[i][1] * pow(ai[i], 2.0)
-		- 144.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
-		+ 144.0 * cpsii[0] * ci2[i][0] * pow(ai[i], 2.0)
-		+ 144.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0)
-		- 144.0 * cpsii[0] * ci0[i][0] * pow(ai[i], 2.0)
-		+ 258.0 * ci0[i][1] * ci2[i][1] * ai[i]
-		- 258.0 * cpsii[1] * ci2[i][1] * ai[i]
-		- 276.0 * pow(ci0[i][1], 2) * ai[i]
-		+ 294.0 * cpsii[1] * ci0[i][1] * ai[i]
-		- 18.0 * pow(cpsii[1], 2.0) * ai[i]
-		+ 258.0 * ci0[i][0] * ci2[i][0] * ai[i]
-		- 258.0 * cpsii[0] * ci2[i][0] * ai[i]
-		- 276.0 * pow(ci0[i][0], 2) * ai[i]
-		+ 294.0 * cpsii[0] * ci0[i][0] * ai[i]
-		- 18.0 * pow(cpsii[0], 2.0) * ai[i]
+	t2 = -144.0 * ci0[i][1] * ci2[i][1] * pow(aii, 2.0) + 144.0 * cpsii[1] * ci2[i][1] * pow(aii, 2.0)
+		+ 144.0 * pow(ci0[i][1], 2.0) * pow(aii, 2.0)
+		- 144.0 * cpsii[1] * ci0[i][1] * pow(aii, 2.0)
+		- 144.0 * ci0[i][0] * ci2[i][0] * pow(aii, 2.0)
+		+ 144.0 * cpsii[0] * ci2[i][0] * pow(aii, 2.0)
+		+ 144.0 * pow(ci0[i][0], 2.0) * pow(aii, 2.0)
+		- 144.0 * cpsii[0] * ci0[i][0] * pow(aii, 2.0)
+		+ 258.0 * ci0[i][1] * ci2[i][1] * aii
+		- 258.0 * cpsii[1] * ci2[i][1] * aii
+		- 276.0 * pow(ci0[i][1], 2) * aii
+		+ 294.0 * cpsii[1] * ci0[i][1] * aii
+		- 18.0 * pow(cpsii[1], 2.0) * aii
+		+ 258.0 * ci0[i][0] * ci2[i][0] * aii
+		- 258.0 * cpsii[0] * ci2[i][0] * aii
+		- 276.0 * pow(ci0[i][0], 2) * aii
+		+ 294.0 * cpsii[0] * ci0[i][0] * aii
+		- 18.0 * pow(cpsii[0], 2.0) * aii
 		- 114.0 * ci0[i][1] * ci2[i][1]
 		+ 114.0 * cpsii[1] * ci2[i][1] + 126.0 * pow(ci0[i][1], 2.0)
 		- 138.0 * cpsii[1] * ci0[i][1] + 12.0 * pow(cpsii[1], 2.0)
@@ -693,170 +728,170 @@ double dCrvtr(int i, double ti, EVec2d& cpsii)
 		+ 114.0 * cpsii[0] * ci2[i][0] + 126.0 * pow(ci0[i][0], 2.0)
 		- 138.0 * cpsii[0] * ci0[i][0] + 12.0 * pow(cpsii[0], 2.0);
 
-	t3 = 54.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 3.0) - 108.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 3.0)
-		+ 54.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 3.0) + 54.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 3.0)
-		- 108.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 3.0)
-		+ 54.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 3.0) - 162.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 2.0)
-		+ 774.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0)
-		- 450.0 * cpsii[1] * ci2[i][1] * pow(ai[i], 2.0)
-		- 612.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
-		+ 450.0 * cpsii[1] * ci0[i][1] * pow(ai[i], 2.0)
-		- 162.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 2.0)
-		+ 774.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
-		- 450.0 * cpsii[0] * ci2[i][0] * pow(ai[i], 2.0)
-		- 612.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0)
-		+ 450.0 * cpsii[0] * ci0[i][0] * pow(ai[i], 2.0) + 162.0 * pow(ci2[i][1], 2.0) * ai[i]
-		- 1032.0 * ci0[i][1] * ci2[i][1] * ai[i]
-		+ 708.0 * cpsii[1] * ci2[i][1] * ai[i] + 882.0 * pow(ci0[i][1], 2.0) * ai[i]
-		- 732.0 * cpsii[1] * ci0[i][1] * ai[i] + 12.0 * pow(cpsii[1], 2.0) * ai[i]
-		+ 162.0 * pow(ci2[i][0], 2.0) * ai[i] - 1032.0 * ci0[i][0] * ci2[i][0] * ai[i]
-		+ 708.0 * cpsii[0] * ci2[i][0] * ai[i] + 882.0 * pow(ci0[i][0], 2.0) * ai[i]
-		- 732.0 * cpsii[0] * ci0[i][0] * ai[i] + 12.0 * pow(cpsii[0], 2.0) * ai[i]
+	t3 = 54.0 * pow(ci2[i][1], 2.0) * pow(aii, 3.0) - 108.0 * ci0[i][1] * ci2[i][1] * pow(aii, 3.0)
+		+ 54.0 * pow(ci0[i][1], 2.0) * pow(aii, 3.0) + 54.0 * pow(ci2[i][0], 2.0) * pow(aii, 3.0)
+		- 108.0 * ci0[i][0] * ci2[i][0] * pow(aii, 3.0)
+		+ 54.0 * pow(ci0[i][0], 2.0) * pow(aii, 3.0) - 162.0 * pow(ci2[i][1], 2.0) * pow(aii, 2.0)
+		+ 774.0 * ci0[i][1] * ci2[i][1] * pow(aii, 2.0)
+		- 450.0 * cpsii[1] * ci2[i][1] * pow(aii, 2.0)
+		- 612.0 * pow(ci0[i][1], 2.0) * pow(aii, 2.0)
+		+ 450.0 * cpsii[1] * ci0[i][1] * pow(aii, 2.0)
+		- 162.0 * pow(ci2[i][0], 2.0) * pow(aii, 2.0)
+		+ 774.0 * ci0[i][0] * ci2[i][0] * pow(aii, 2.0)
+		- 450.0 * cpsii[0] * ci2[i][0] * pow(aii, 2.0)
+		- 612.0 * pow(ci0[i][0], 2.0) * pow(aii, 2.0)
+		+ 450.0 * cpsii[0] * ci0[i][0] * pow(aii, 2.0) + 162.0 * pow(ci2[i][1], 2.0) * aii
+		- 1032.0 * ci0[i][1] * ci2[i][1] * aii
+		+ 708.0 * cpsii[1] * ci2[i][1] * aii + 882.0 * pow(ci0[i][1], 2.0) * aii
+		- 732.0 * cpsii[1] * ci0[i][1] * aii + 12.0 * pow(cpsii[1], 2.0) * aii
+		+ 162.0 * pow(ci2[i][0], 2.0) * aii - 1032.0 * ci0[i][0] * ci2[i][0] * aii
+		+ 708.0 * cpsii[0] * ci2[i][0] * aii + 882.0 * pow(ci0[i][0], 2.0) * aii
+		- 732.0 * cpsii[0] * ci0[i][0] * aii + 12.0 * pow(cpsii[0], 2.0) * aii
 		- 54.0 * pow(ci2[i][1], 2.0) + 380.0 * ci0[i][1] * ci2[i][1]
 		- 272.0 * cpsii[1] * ci2[i][1] - 334.0 * pow(ci0[i][1], 2.0)
 		+ 288.0 * cpsii[1] * ci0[i][1] - 8.0 * pow(cpsii[1], 2.0) - 54.0 * pow(ci2[i][0], 2.0)
 		+ 380.0 * ci0[i][0] * ci2[i][0] - 272.0 * cpsii[0] * ci2[i][0]
 		- 334.0 * pow(ci0[i][0], 2.0) + 288.0 * cpsii[0] * ci0[i][0] - 8.0 * pow(cpsii[0], 2.0);
 
-	t4 = (-405.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 3.0)) + 810.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 3.0)
-		- 405.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 3.0) - 405.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 3.0)
-		+ 810.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 3.0)
-		- 405.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 3.0) + 1080.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 2.0)
-		- 2880.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0)
-		+ 720.0 * cpsii[1] * ci2[i][1] * pow(ai[i], 2.0)
-		+ 1800.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
-		- 720.0 * cpsii[1] * ci0[i][1] * pow(ai[i], 2.0)
-		+ 1080.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 2.0)
-		- 2880.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
-		+ 720.0 * cpsii[0] * ci2[i][0] * pow(ai[i], 2.0)
-		+ 1800.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0)
-		- 720.0 * cpsii[0] * ci0[i][0] * pow(ai[i], 2.0)
-		- 945.0 * pow(ci2[i][1], 2.0) * ai[i]
-		+ 2910.0 * ci0[i][1] * ci2[i][1] * ai[i]
-		- 1020.0 * cpsii[1] * ci2[i][1] * ai[i]
-		- 1965.0 * pow(ci0[i][1], 2.0) * ai[i]
-		+ 1020.0 * cpsii[1] * ci0[i][1] * ai[i]
-		- 945.0 * pow(ci2[i][0], 2.0) * ai[i]
-		+ 2910.0 * ci0[i][0] * ci2[i][0] * ai[i]
-		- 1020.0 * cpsii[0] * ci2[i][0] * ai[i]
-		- 1965.0 * pow(ci0[i][0], 2.0) * ai[i]
-		+ 1020.0 * cpsii[0] * ci0[i][0] * ai[i] + 270.0 * pow(ci2[i][1], 2.0)
+	t4 = (-405.0 * pow(ci2[i][1], 2.0) * pow(aii, 3.0)) + 810.0 * ci0[i][1] * ci2[i][1] * pow(aii, 3.0)
+		- 405.0 * pow(ci0[i][1], 2.0) * pow(aii, 3.0) - 405.0 * pow(ci2[i][0], 2.0) * pow(aii, 3.0)
+		+ 810.0 * ci0[i][0] * ci2[i][0] * pow(aii, 3.0)
+		- 405.0 * pow(ci0[i][0], 2.0) * pow(aii, 3.0) + 1080.0 * pow(ci2[i][1], 2.0) * pow(aii, 2.0)
+		- 2880.0 * ci0[i][1] * ci2[i][1] * pow(aii, 2.0)
+		+ 720.0 * cpsii[1] * ci2[i][1] * pow(aii, 2.0)
+		+ 1800.0 * pow(ci0[i][1], 2.0) * pow(aii, 2.0)
+		- 720.0 * cpsii[1] * ci0[i][1] * pow(aii, 2.0)
+		+ 1080.0 * pow(ci2[i][0], 2.0) * pow(aii, 2.0)
+		- 2880.0 * ci0[i][0] * ci2[i][0] * pow(aii, 2.0)
+		+ 720.0 * cpsii[0] * ci2[i][0] * pow(aii, 2.0)
+		+ 1800.0 * pow(ci0[i][0], 2.0) * pow(aii, 2.0)
+		- 720.0 * cpsii[0] * ci0[i][0] * pow(aii, 2.0)
+		- 945.0 * pow(ci2[i][1], 2.0) * aii
+		+ 2910.0 * ci0[i][1] * ci2[i][1] * aii
+		- 1020.0 * cpsii[1] * ci2[i][1] * aii
+		- 1965.0 * pow(ci0[i][1], 2.0) * aii
+		+ 1020.0 * cpsii[1] * ci0[i][1] * aii
+		- 945.0 * pow(ci2[i][0], 2.0) * aii
+		+ 2910.0 * ci0[i][0] * ci2[i][0] * aii
+		- 1020.0 * cpsii[0] * ci2[i][0] * aii
+		- 1965.0 * pow(ci0[i][0], 2.0) * aii
+		+ 1020.0 * cpsii[0] * ci0[i][0] * aii + 270.0 * pow(ci2[i][1], 2.0)
 		- 900.0 * ci0[i][1] * ci2[i][1] + 360.0 * cpsii[1] * ci2[i][1]
 		+ 630.0 * pow(ci0[i][1], 2.0) - 360.0 * cpsii[1] * ci0[i][1]
 		+ 270.0 * pow(ci2[i][0], 2.0) - 900.0 * ci0[i][0] * ci2[i][0]
 		+ 360.0 * cpsii[0] * ci2[i][0] + 630.0 * pow(ci0[i][0], 2.0)
 		- 360.0 * cpsii[0] * ci0[i][0];
 
-	t5 = 1296.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 3.0) - 2592.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 3.0)
-		+ 1296.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 3.0) + 1296.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 3.0)
-		- 2592.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 3.0)
-		+ 1296.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 3.0) - 3114.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 2.0)
-		+ 6822.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0)
-		- 594.0 * cpsii[1] * ci2[i][1] * pow(ai[i], 2.0)
-		- 3708.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
-		+ 594.0 * cpsii[1] * ci0[i][1] * pow(ai[i], 2.0)
-		- 3114.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 2.0)
-		+ 6822.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
-		- 594.0 * cpsii[0] * ci2[i][0] * pow(ai[i], 2.0)
-		- 3708.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0)
-		+ 594.0 * cpsii[0] * ci0[i][0] * pow(ai[i], 2.0)
-		+ 2454.0 * pow(ci2[i][1], 2.0) * ai[i]
-		- 5700.0 * ci0[i][1] * ci2[i][1] * ai[i]
-		+ 792.0 * cpsii[1] * ci2[i][1] * ai[i]
-		+ 3246.0 * pow(ci0[i][1], 2.0) * ai[i]
-		- 792.0 * cpsii[1] * ci0[i][1] * ai[i]
-		+ 2454.0 * pow(ci2[i][0], 2.0) * ai[i]
-		- 5700.0 * ci0[i][0] * ci2[i][0] * ai[i]
-		+ 792.0 * cpsii[0] * ci2[i][0] * ai[i]
-		+ 3246.0 * pow(ci0[i][0], 2.0) * ai[i]
-		- 792.0 * cpsii[0] * ci0[i][0] * ai[i] - 636 * pow(ci2[i][1], 2.0)
+	t5 = 1296.0 * pow(ci2[i][1], 2.0) * pow(aii, 3.0) - 2592.0 * ci0[i][1] * ci2[i][1] * pow(aii, 3.0)
+		+ 1296.0 * pow(ci0[i][1], 2.0) * pow(aii, 3.0) + 1296.0 * pow(ci2[i][0], 2.0) * pow(aii, 3.0)
+		- 2592.0 * ci0[i][0] * ci2[i][0] * pow(aii, 3.0)
+		+ 1296.0 * pow(ci0[i][0], 2.0) * pow(aii, 3.0) - 3114.0 * pow(ci2[i][1], 2.0) * pow(aii, 2.0)
+		+ 6822.0 * ci0[i][1] * ci2[i][1] * pow(aii, 2.0)
+		- 594.0 * cpsii[1] * ci2[i][1] * pow(aii, 2.0)
+		- 3708.0 * pow(ci0[i][1], 2.0) * pow(aii, 2.0)
+		+ 594.0 * cpsii[1] * ci0[i][1] * pow(aii, 2.0)
+		- 3114.0 * pow(ci2[i][0], 2.0) * pow(aii, 2.0)
+		+ 6822.0 * ci0[i][0] * ci2[i][0] * pow(aii, 2.0)
+		- 594.0 * cpsii[0] * ci2[i][0] * pow(aii, 2.0)
+		- 3708.0 * pow(ci0[i][0], 2.0) * pow(aii, 2.0)
+		+ 594.0 * cpsii[0] * ci0[i][0] * pow(aii, 2.0)
+		+ 2454.0 * pow(ci2[i][1], 2.0) * aii
+		- 5700.0 * ci0[i][1] * ci2[i][1] * aii
+		+ 792.0 * cpsii[1] * ci2[i][1] * aii
+		+ 3246.0 * pow(ci0[i][1], 2.0) * aii
+		- 792.0 * cpsii[1] * ci0[i][1] * aii
+		+ 2454.0 * pow(ci2[i][0], 2.0) * aii
+		- 5700.0 * ci0[i][0] * ci2[i][0] * aii
+		+ 792.0 * cpsii[0] * ci2[i][0] * aii
+		+ 3246.0 * pow(ci0[i][0], 2.0) * aii
+		- 792.0 * cpsii[0] * ci0[i][0] * aii - 636 * pow(ci2[i][1], 2.0)
 		+ 1536.0 * ci0[i][1] * ci2[i][1] - 264 * cpsii[1] * ci2[i][1]
 		- 900.0 * pow(ci0[i][1], 2.0) + 264 * cpsii[1] * ci0[i][1]
 		- 636.0 * pow(ci2[i][0], 2.0) + 1536 * ci0[i][0] * ci2[i][0]
 		- 264.0 * cpsii[0] * ci2[i][0] - 900 * pow(ci0[i][0], 2.0)
 		+ 264.0 * cpsii[0] * ci0[i][0];
 
-	t6 = (-2268.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 3.0)) + 4536.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 3.0)
-		- 2268.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 3.0)
-		- 2268.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 3.0)
-		+ 4536.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 3.0)
-		- 2268.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 3.0)
-		+ 5004.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 2.0)
-		- 10206.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0)
-		+ 198.0 * cpsii[1] * ci2[i][1] * pow(ai[i], 2.0)
-		+ 5202.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
-		- 198.0 * cpsii[1] * ci0[i][1] * pow(ai[i], 2.0)
-		+ 5004.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 2.0)
-		- 10206.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
-		+ 198.0 * cpsii[0] * ci2[i][0] * pow(ai[i], 2.0)
-		+ 5202.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0)
-		- 198.0 * cpsii[0] * ci0[i][0] * pow(ai[i], 2.0)
-		- 3648.0 * pow(ci2[i][1], 2.0) * ai[i]
-		+ 7560.0 * ci0[i][1] * ci2[i][1] * ai[i]
-		- 264.0 * cpsii[1] * ci2[i][1] * ai[i]
-		- 3912.0 * pow(ci0[i][1], 2.0) * ai[i]
-		+ 264.0 * cpsii[1] * ci0[i][1] * ai[i]
-		- 3648.0 * pow(ci2[i][0], 2.0) * ai[i]
-		+ 7560.0 * ci0[i][0] * ci2[i][0] * ai[i]
-		- 264.0 * cpsii[0] * ci2[i][0] * ai[i]
-		- 3912.0 * pow(ci0[i][0], 2.0) * ai[i]
-		+ 264.0 * cpsii[0] * ci0[i][0] * ai[i] + 880.0 * pow(ci2[i][1], 2.0)
+	t6 = (-2268.0 * pow(ci2[i][1], 2.0) * pow(aii, 3.0)) + 4536.0 * ci0[i][1] * ci2[i][1] * pow(aii, 3.0)
+		- 2268.0 * pow(ci0[i][1], 2.0) * pow(aii, 3.0)
+		- 2268.0 * pow(ci2[i][0], 2.0) * pow(aii, 3.0)
+		+ 4536.0 * ci0[i][0] * ci2[i][0] * pow(aii, 3.0)
+		- 2268.0 * pow(ci0[i][0], 2.0) * pow(aii, 3.0)
+		+ 5004.0 * pow(ci2[i][1], 2.0) * pow(aii, 2.0)
+		- 10206.0 * ci0[i][1] * ci2[i][1] * pow(aii, 2.0)
+		+ 198.0 * cpsii[1] * ci2[i][1] * pow(aii, 2.0)
+		+ 5202.0 * pow(ci0[i][1], 2.0) * pow(aii, 2.0)
+		- 198.0 * cpsii[1] * ci0[i][1] * pow(aii, 2.0)
+		+ 5004.0 * pow(ci2[i][0], 2.0) * pow(aii, 2.0)
+		- 10206.0 * ci0[i][0] * ci2[i][0] * pow(aii, 2.0)
+		+ 198.0 * cpsii[0] * ci2[i][0] * pow(aii, 2.0)
+		+ 5202.0 * pow(ci0[i][0], 2.0) * pow(aii, 2.0)
+		- 198.0 * cpsii[0] * ci0[i][0] * pow(aii, 2.0)
+		- 3648.0 * pow(ci2[i][1], 2.0) * aii
+		+ 7560.0 * ci0[i][1] * ci2[i][1] * aii
+		- 264.0 * cpsii[1] * ci2[i][1] * aii
+		- 3912.0 * pow(ci0[i][1], 2.0) * aii
+		+ 264.0 * cpsii[1] * ci0[i][1] * aii
+		- 3648.0 * pow(ci2[i][0], 2.0) * aii
+		+ 7560.0 * ci0[i][0] * ci2[i][0] * aii
+		- 264.0 * cpsii[0] * ci2[i][0] * aii
+		- 3912.0 * pow(ci0[i][0], 2.0) * aii
+		+ 264.0 * cpsii[0] * ci0[i][0] * aii + 880.0 * pow(ci2[i][1], 2.0)
 		- 1848.0 * ci0[i][1] * ci2[i][1] + 88.0 * cpsii[1] * ci2[i][1]
 		+ 968.0 * pow(ci0[i][1], 2.0) - 88.0 * cpsii[1] * ci0[i][1]
 		+ 880.0 * pow(ci2[i][0], 2.0) - 1848.0 * ci0[i][0] * ci2[i][0]
 		+ 88.0 * cpsii[0] * ci2[i][0] + 968.0 * pow(ci0[i][0], 2.0)
 		- 88.0 * cpsii[0] * ci0[i][0];
 
-	t7 = 2268.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 3.0) - 4536.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 3.0)
-		+ 2268.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 3.0) + 2268.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 3.0)
-		- 4536.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 3.0)
-		+ 2268.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 3.0) - 4698.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 2.0)
-		+ 9396.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0)
-		- 4698.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0) - 4698.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 2.0)
-		+ 9396.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
-		- 4698.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0) + 3240.0 * pow(ci2[i][1], 2.0) * ai[i]
-		- 6480.0 * ci0[i][1] * ci2[i][1] * ai[i]
-		+ 3240.0 * pow(ci0[i][1], 2.0) * ai[i] + 3240.0 * pow(ci2[i][0], 2.0) * ai[i]
-		- 6480.0 * ci0[i][0] * ci2[i][0] * ai[i]
-		+ 3240.0 * pow(ci0[i][0], 2.0) * ai[i] - 744.0 * pow(ci2[i][1], 2.0)
+	t7 = 2268.0 * pow(ci2[i][1], 2.0) * pow(aii, 3.0) - 4536.0 * ci0[i][1] * ci2[i][1] * pow(aii, 3.0)
+		+ 2268.0 * pow(ci0[i][1], 2.0) * pow(aii, 3.0) + 2268.0 * pow(ci2[i][0], 2.0) * pow(aii, 3.0)
+		- 4536.0 * ci0[i][0] * ci2[i][0] * pow(aii, 3.0)
+		+ 2268.0 * pow(ci0[i][0], 2.0) * pow(aii, 3.0) - 4698.0 * pow(ci2[i][1], 2.0) * pow(aii, 2.0)
+		+ 9396.0 * ci0[i][1] * ci2[i][1] * pow(aii, 2.0)
+		- 4698.0 * pow(ci0[i][1], 2.0) * pow(aii, 2.0) - 4698.0 * pow(ci2[i][0], 2.0) * pow(aii, 2.0)
+		+ 9396.0 * ci0[i][0] * ci2[i][0] * pow(aii, 2.0)
+		- 4698.0 * pow(ci0[i][0], 2.0) * pow(aii, 2.0) + 3240.0 * pow(ci2[i][1], 2.0) * aii
+		- 6480.0 * ci0[i][1] * ci2[i][1] * aii
+		+ 3240.0 * pow(ci0[i][1], 2.0) * aii + 3240.0 * pow(ci2[i][0], 2.0) * aii
+		- 6480.0 * ci0[i][0] * ci2[i][0] * aii
+		+ 3240.0 * pow(ci0[i][0], 2.0) * aii - 744.0 * pow(ci2[i][1], 2.0)
 		+ 1488.0 * ci0[i][1] * ci2[i][1] - 744.0 * pow(ci0[i][1], 2.0)
 		- 744.0 * pow(ci2[i][0], 2.0) + 1488.0 * ci0[i][0] * ci2[i][0]
 		- 744.0 * pow(ci0[i][0], 2.0);
 
-	t8 = (-1215.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 3.0)) + 2430.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 3.0)
-		- 1215.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 3.0)
-		- 1215.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 3.0)
-		+ 2430.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 3.0)
-		- 1215.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 3.0)
-		+ 2430.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 2.0)
-		- 4860.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0)
-		+ 2430.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
-		+ 2430.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 2.0)
-		- 4860.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
-		+ 2430.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0) - 1620.0 * pow(ci2[i][1], 2.0) * ai[i]
-		+ 3240.0 * ci0[i][1] * ci2[i][1] * ai[i]
-		- 1620.0 * pow(ci0[i][1], 2.0) * ai[i] - 1620.0 * pow(ci2[i][0], 2.0) * ai[i]
-		+ 3240.0 * ci0[i][0] * ci2[i][0] * ai[i]
-		- 1620.0 * pow(ci0[i][0], 2.0) * ai[i] + 360.0 * pow(ci2[i][1], 2.0)
+	t8 = (-1215.0 * pow(ci2[i][1], 2.0) * pow(aii, 3.0)) + 2430.0 * ci0[i][1] * ci2[i][1] * pow(aii, 3.0)
+		- 1215.0 * pow(ci0[i][1], 2.0) * pow(aii, 3.0)
+		- 1215.0 * pow(ci2[i][0], 2.0) * pow(aii, 3.0)
+		+ 2430.0 * ci0[i][0] * ci2[i][0] * pow(aii, 3.0)
+		- 1215.0 * pow(ci0[i][0], 2.0) * pow(aii, 3.0)
+		+ 2430.0 * pow(ci2[i][1], 2.0) * pow(aii, 2.0)
+		- 4860.0 * ci0[i][1] * ci2[i][1] * pow(aii, 2.0)
+		+ 2430.0 * pow(ci0[i][1], 2.0) * pow(aii, 2.0)
+		+ 2430.0 * pow(ci2[i][0], 2.0) * pow(aii, 2.0)
+		- 4860.0 * ci0[i][0] * ci2[i][0] * pow(aii, 2.0)
+		+ 2430.0 * pow(ci0[i][0], 2.0) * pow(aii, 2.0) - 1620.0 * pow(ci2[i][1], 2.0) * aii
+		+ 3240.0 * ci0[i][1] * ci2[i][1] * aii
+		- 1620.0 * pow(ci0[i][1], 2.0) * aii - 1620.0 * pow(ci2[i][0], 2.0) * aii
+		+ 3240.0 * ci0[i][0] * ci2[i][0] * aii
+		- 1620.0 * pow(ci0[i][0], 2.0) * aii + 360.0 * pow(ci2[i][1], 2.0)
 		- 720.0 * ci0[i][1] * ci2[i][1] + 360.0 * pow(ci0[i][1], 2.0)
 		+ 360.0 * pow(ci2[i][0], 2.0) - 720.0 * ci0[i][0] * ci2[i][0]
 		+ 360.0 * pow(ci0[i][0], 2.0);
 
-	t9 = 270.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 3.0) - 540.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 3.0)
-		+ 270.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 3.0)
-		+ 270.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 3.0)
-		- 540.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 3.0)
-		+ 270.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 3.0)
-		- 540.0 * pow(ci2[i][1], 2.0) * pow(ai[i], 2.0)
-		+ 1080.0 * ci0[i][1] * ci2[i][1] * pow(ai[i], 2.0)
-		- 540.0 * pow(ci0[i][1], 2.0) * pow(ai[i], 2.0)
-		- 540.0 * pow(ci2[i][0], 2.0) * pow(ai[i], 2.0)
-		+ 1080.0 * ci0[i][0] * ci2[i][0] * pow(ai[i], 2.0)
-		- 540.0 * pow(ci0[i][0], 2.0) * pow(ai[i], 2.0) + 360.0 * pow(ci2[i][1], 2.0) * ai[i]
-		- 720.0 * ci0[i][1] * ci2[i][1] * ai[i]
-		+ 360.0 * pow(ci0[i][1], 2.0) * ai[i] + 360.0 * pow(ci2[i][0], 2.0) * ai[i]
-		- 720.0 * ci0[i][0] * ci2[i][0] * ai[i]
-		+ 360.0 * pow(ci0[i][0], 2.0) * ai[i] - 80.0 * pow(ci2[i][1], 2.0)
+	t9 = 270.0 * pow(ci2[i][1], 2.0) * pow(aii, 3.0) - 540.0 * ci0[i][1] * ci2[i][1] * pow(aii, 3.0)
+		+ 270.0 * pow(ci0[i][1], 2.0) * pow(aii, 3.0)
+		+ 270.0 * pow(ci2[i][0], 2.0) * pow(aii, 3.0)
+		- 540.0 * ci0[i][0] * ci2[i][0] * pow(aii, 3.0)
+		+ 270.0 * pow(ci0[i][0], 2.0) * pow(aii, 3.0)
+		- 540.0 * pow(ci2[i][1], 2.0) * pow(aii, 2.0)
+		+ 1080.0 * ci0[i][1] * ci2[i][1] * pow(aii, 2.0)
+		- 540.0 * pow(ci0[i][1], 2.0) * pow(aii, 2.0)
+		- 540.0 * pow(ci2[i][0], 2.0) * pow(aii, 2.0)
+		+ 1080.0 * ci0[i][0] * ci2[i][0] * pow(aii, 2.0)
+		- 540.0 * pow(ci0[i][0], 2.0) * pow(aii, 2.0) + 360.0 * pow(ci2[i][1], 2.0) * aii
+		- 720.0 * ci0[i][1] * ci2[i][1] * aii
+		+ 360.0 * pow(ci0[i][1], 2.0) * aii + 360.0 * pow(ci2[i][0], 2.0) * aii
+		- 720.0 * ci0[i][0] * ci2[i][0] * aii
+		+ 360.0 * pow(ci0[i][0], 2.0) * aii - 80.0 * pow(ci2[i][1], 2.0)
 		+ 160.0 * ci0[i][1] * ci2[i][1] - 80.0 * pow(ci0[i][1], 2.0)
 		- 80.0 * pow(ci2[i][0], 2.0) + 160.0 * ci0[i][0] * ci2[i][0]
 		- 80.0 * pow(ci0[i][0], 2.0);
@@ -870,7 +905,7 @@ double dCrvtr(int i, double ti, EVec2d& cpsii)
 }
 
 
-void calculate_lambdai(int n)
+void calculate_lambdai(int n, vector<double>& ai)
 {
 
 	for (int i = 0; i < n; ++i)
@@ -893,7 +928,7 @@ void calculate_lambdai(int n)
 
 }
 
-void opencalculate_lambdai(int n)
+void opencalculate_lambdai(int n, vector<double>& ai)
 {
 	for (int i = 0; i < n-1; i++)
 	{
@@ -919,7 +954,7 @@ double TrgArea(const EVec2d&p0,const EVec2d&p1,const EVec2d&p2)
 	return Area;
 }
 
-void opencalculate_ci1(int n, vecEg2dd& cpsi)
+void opencalculate_ci1(int n, vecEg2dd& cpsi, vector<double>& ai)
 {
 	MatrixXd A(n, n);
 	VectorXd b1(n), b2(n);
@@ -975,7 +1010,7 @@ void opencalculate_ci1(int n, vecEg2dd& cpsi)
 	}
 }
 
-void calculate_ci1(int n,vecEg2dd &cpsi)
+void calculate_ci1(int n,vecEg2dd &cpsi, vector<double>& ai)
 {
 	MatrixXd A(n, n);
 	VectorXd b1(n), b2(n);
@@ -1047,8 +1082,39 @@ void OnMouse(int button, int state, int x, int y)
 			cps.push_back(EVec2d(x, winHeight - y));
 						
 		}*/
+
 		cps.push_back(EVec2d(x, winHeight - y));
-		//ai.push_back(defaultai);
+		double a;
+
+		if (closedflag)
+		{
+			cout << "Please enter the value of a(2/3<=a<1)" << endl;
+			cin >> a;
+			if (a >= 2. / 3. && a < 1)
+			{
+				ai.push_back(a);
+			}
+			else {
+				ai.push_back(defaultai);
+			}
+			
+		}
+		else
+		{
+			if (cps.size() > 1) 
+			{
+				cout << "Please enter the value of a(2/3<=a<1)" << endl;
+				cin >> a;
+				if (a >= 2. / 3. && a < 1)
+				{
+					ai.push_back(a);
+				}
+				else {
+					ai.push_back(defaultai);
+				}
+			}
+		}
+		
 		
 	}
 	/*else if (state == GLUT_UP)
