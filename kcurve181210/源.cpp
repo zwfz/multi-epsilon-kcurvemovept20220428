@@ -47,6 +47,8 @@ int Num,i0;
 bool flag0 = false;
 bool closedflag = true;
 
+bool aiflag = false;
+
 void closed_ekcurve(vecEg2dd& cpsi, vector<double>& ai);
 void opened_ekcurve(vecEg2dd& cpsi, vector<double>& ai);
 
@@ -74,9 +76,13 @@ double dCrvtr(int i, double ti, EVec2d& cpsii, double aii);
 //void mouseMotionPT(int x, int y);
 void OnMouse(int button, int state, int x, int y);
 void myKeyboard(unsigned char key, int x, int y);
+void MouseMove(int x, int y);
 
 void menuFunc(int value);
 //void multikcrv();
+
+void changeai(int i);
+int getaiIndex(int x, int y);
 
 void myInit()
 {
@@ -121,36 +127,12 @@ void myDisplay()
 
 	glEnd();
 
-	//屏幕显示ai值
-	glColor3d(1., 0.502, 0);		//橘黄
-	if (closedflag)				//闭式ek-curve
+	/*if (Num > 0)
 	{
-		for (int i = 0; i < Num; ++i)
-		{
-			string str = to_string(ai[i]);
-			glRasterPos2d(cps[i][0]+30., cps[i][1]+30.);
-			for (char& c : str)
-			{
-				glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, c);
-			}
+		Inputai();
+	}*/
+	ai.resize(Num, defaultai);
 
-		}
-	}
-	else
-	{
-		for (int i = 0; i < Num-2; ++i)		//开式ek-curve
-		{
-			string str = to_string(ai[i]);
-			glRasterPos2d(cps[i+1][0]+30., cps[i+1][1]+30.);
-			for (char& c : str)
-			{
-				glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, c);
-			}
-
-		}
-	}
-	
-	
 
 	glColor3f(0, 1, 1);		//蓝色
 	glLineWidth(3);
@@ -161,6 +143,7 @@ void myDisplay()
 	}
 	glEnd();
 
+	
 	if (Num > 2)
 	{
 		if ((Num>3) && closedflag)
@@ -182,6 +165,39 @@ void myDisplay()
 			}
 		}
 		
+
+		
+	}
+
+	//屏幕显示ai值
+	glColor3d(1., 0.502, 0);		//橘黄
+	if ((Num > 3) && closedflag)				//闭式ek-curve
+	{
+
+		for (int i = 0; i < Num; ++i)
+		{
+			string str = to_string(ai[i]);
+			glRasterPos2d(cps[i][0] + 30., cps[i][1] + 30.);
+			for (char& c : str)
+			{
+				glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, c);
+			}
+
+		}
+	}
+	else
+	{
+
+		for (int i = 0; i < Num - 2; ++i)		//开式ek-curve
+		{
+			string str = to_string(ai[i]);
+			glRasterPos2d(cps[i + 1][0] + 30., cps[i + 1][1] + 30.);
+			for (char& c : str)
+			{
+				glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, c);
+			}
+
+		}
 	}
 		
 
@@ -1069,6 +1085,53 @@ void calculate_ci02(int n)
 		cout << point.transpose() << endl;
 	}*/
 }
+
+void changeai(int i)
+{
+	double a;
+
+	if (closedflag)
+	{
+		cout << "Please enter the value of a(2/3<=a<1)" << endl;
+		cin >> a;
+		if (a >= 2. / 3. && a < 1)
+		{
+			ai[i]=a;
+		}
+		else {
+			ai[i]=defaultai;
+		}
+
+	}
+	else
+	{
+		if (cps.size() > 1)
+		{
+			cout << "Please enter the value of a(2/3<=a<1)" << endl;
+			cin >> a;
+			if (a >= 2. / 3. && a < 1)
+			{
+				ai[i-1]=a;
+			}
+			else {
+				ai[i-1]=defaultai;
+			}
+		}
+	}
+}
+
+int getaiIndex(int x, int y)
+{
+	for (int i = 0; i< Num; i++)
+	{
+		
+		if (fabs(cps[i][0] - (double)x) < 5. || fabs(cps[i][1] - (double)y) < 5.)
+			return i;
+
+	}
+	return -1;
+}
+
 void OnMouse(int button, int state, int x, int y)
 {
 	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
@@ -1082,38 +1145,20 @@ void OnMouse(int button, int state, int x, int y)
 			cps.push_back(EVec2d(x, winHeight - y));
 						
 		}*/
-
-		cps.push_back(EVec2d(x, winHeight - y));
-		double a;
-
-		if (closedflag)
+		if (!aiflag)
 		{
-			cout << "Please enter the value of a(2/3<=a<1)" << endl;
-			cin >> a;
-			if (a >= 2. / 3. && a < 1)
-			{
-				ai.push_back(a);
-			}
-			else {
-				ai.push_back(defaultai);
-			}
-			
+			cps.push_back(EVec2d(x, winHeight - y));
 		}
 		else
 		{
-			if (cps.size() > 1) 
-			{
-				cout << "Please enter the value of a(2/3<=a<1)" << endl;
-				cin >> a;
-				if (a >= 2. / 3. && a < 1)
-				{
-					ai.push_back(a);
-				}
-				else {
-					ai.push_back(defaultai);
-				}
+			int i = getaiIndex(x, winHeight - y);
+			if (i >= 0) {
+				changeai(i);
 			}
+			
+			aiflag = false;
 		}
+		
 		
 		
 	}
@@ -1125,6 +1170,15 @@ void OnMouse(int button, int state, int x, int y)
 	glutPostRedisplay();
 
 }
+
+void MouseMove(int x, int y)
+{
+	cps[Num - 1][0] = x;
+	cps[Num - 1][1] = winHeight - y;
+
+	glutPostRedisplay();
+}
+
 //bool checkpt(int x, int y)
 //{
 //	for (i0 = 0; i0 < Num; i0++)
@@ -1157,6 +1211,10 @@ void menuFunc(int value)
 	case 2:
 		closedflag = true;
 		break;
+	case 3:
+		aiflag = true;
+		
+		break;
 
 	case 999:
 		exit(1);
@@ -1176,11 +1234,13 @@ int main(int argc, char **argv)
 	glutReshapeFunc(myReshape);
 	glutDisplayFunc(myDisplay);
 	glutMouseFunc(OnMouse);
+	glutMotionFunc(MouseMove);
 	glutKeyboardFunc(myKeyboard);
 
 	menu = glutCreateMenu(menuFunc);
 	glutAddMenuEntry("Opened Ek-curve", 1);
 	glutAddMenuEntry("Closed Ek-curve", 2);
+	glutAddMenuEntry("Change a", 3);
 	glutAddMenuEntry("Exit", 999);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 
