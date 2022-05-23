@@ -46,7 +46,7 @@ bool mouseLeftDown;
 bool mouseRightDown;
 int Num,i0;
 bool flag0 = false;
-bool closedflag = true;
+bool closedflag = false;
 
 bool aiflag = false;
 
@@ -75,7 +75,7 @@ double dCrvtr(int i, double ti, EVec2d& cpsii, double aii);
 double ddCrvtr(int i, double ti, EVec2d& cpsii, double aii);
 double Newton(int i, EVec2d& cpsii, double aii);
 
-//bool checkpt(int x, int y);
+bool checkpt(int x, int y);
 //void mouseMotionPT(int x, int y);
 void OnMouse(int button, int state, int x, int y);
 void myKeyboard(unsigned char key, int x, int y);
@@ -1388,9 +1388,22 @@ void OnMouse(int button, int state, int x, int y)
 			cps.push_back(EVec2d(x, winHeight - y));
 						
 		}*/
+		
 		if (!aiflag)
 		{
 			cps.push_back(EVec2d(x, winHeight - y));
+
+			if ((Num>3) &&(checkpt(x, winHeight - y)))
+			{
+				cps[0][0] = x;					//若终点与起点重合，则起始点合为一点，变为闭式ek-curve
+				cps[0][1] = winHeight - y;
+				cps.pop_back();
+				closedflag = true;
+				
+
+			}
+			
+			
 		}
 		else
 		{
@@ -1416,23 +1429,24 @@ void OnMouse(int button, int state, int x, int y)
 
 void MouseMove(int x, int y)
 {
+
 	cps[Num - 1][0] = x;
 	cps[Num - 1][1] = winHeight - y;
-
+	
 	glutPostRedisplay();
 }
 
-//bool checkpt(int x, int y)
-//{
-//	for (i0 = 0; i0 < Num; i0++)
-//	{
-//		
-//		if (fabs(cps[i0][0] - (double)x) < 2. || fabs(cps[i0][1] - (double)y) < 2.)
-//			return true;
-//
-//	}
-//	return false;
-//}
+bool checkpt(int x, int y)
+{
+		
+	if (fabs(cps[0][0] - (double)x) < 10. && fabs(cps[0][1] - (double)y) < 10.)
+	{
+		return true;
+	}
+		
+
+	return false;
+}
 //void mouseMotionPT(int x, int y)
 //{
 //	if (mouseLeftDown)
@@ -1451,10 +1465,8 @@ void menuFunc(int value)
 	case 1:
 		closedflag = false;
 		break;
+
 	case 2:
-		closedflag = true;
-		break;
-	case 3:
 		aiflag = true;
 		
 		break;
@@ -1463,6 +1475,7 @@ void menuFunc(int value)
 		exit(1);
 		break;
 	}
+	glutPostRedisplay();
 }
 
 int main(int argc, char **argv)
@@ -1481,9 +1494,8 @@ int main(int argc, char **argv)
 	glutKeyboardFunc(myKeyboard);
 
 	menu = glutCreateMenu(menuFunc);
-	glutAddMenuEntry("Opened Ek-curve", 1);
-	glutAddMenuEntry("Closed Ek-curve", 2);
-	glutAddMenuEntry("Change a", 3);
+	glutAddMenuEntry("Draw Ek-curve", 1);
+	glutAddMenuEntry("Change a", 2);
 	glutAddMenuEntry("Exit", 999);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 
