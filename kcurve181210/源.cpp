@@ -9,6 +9,7 @@
 //#include <freeglut_ext.h>
 /*使用二分法求ti 20220513*/
 /*实现画曲率直方图 20220514*/
+/*改用牛顿法求ti 20220523*/
 
 
 using namespace std;
@@ -69,8 +70,10 @@ bool CheckItr(const vecEg2dd &prevci1,int n);
 void drawQuBzr(EVec2d &ci0, EVec2d &ci1, EVec2d &ci2, double ai);
 void drawCrvtrVctrClmn(EVec2d& ci0, EVec2d& ci1, EVec2d& ci2, double ai);
 
-double bisection(int i, EVec2d& cpsii, double aii);
+//double bisection(int i, EVec2d& cpsii, double aii);
 double dCrvtr(int i, double ti, EVec2d& cpsii, double aii);
+double ddCrvtr(int i, double ti, EVec2d& cpsii, double aii);
+double Newton(int i, EVec2d& cpsii, double aii);
 
 //bool checkpt(int x, int y);
 //void mouseMotionPT(int x, int y);
@@ -425,10 +428,7 @@ void drawCrvtrVctrClmn(EVec2d& ci0, EVec2d& ci1, EVec2d& ci2, double ai)
 
 }
 
-void calCrvtrVctrClmn() 
-{
 
-}
 
 void myKeyboard(unsigned char key, int x, int y)
 {
@@ -625,7 +625,7 @@ void calculate_ti(int n, vecEg2dd& cpsi, vector<double>& ai)
 {
 	for (int i = 0; i < n; ++i)
 	{
-		ti[i] = bisection(i, cpsi[i],ai[i]);
+		ti[i] = Newton(i, cpsi[i],ai[i]);
 		if (ti[i] < 0.0)
 		{
 			ti[i] = 0.0;
@@ -642,7 +642,7 @@ void opencalculate_ti(int n, vecEg2dd& cpsi, vector<double>& ai)
 {
 	for (int i = 0; i < n; ++i)
 	{
-		ti[i] = bisection(i, cpsi[i+1],ai[i]);
+		ti[i] = Newton(i, cpsi[i+1],ai[i]);
 		if (ti[i] < 0.0)
 		{
 			ti[i] = 0.0;
@@ -654,38 +654,60 @@ void opencalculate_ti(int n, vecEg2dd& cpsi, vector<double>& ai)
 	}
 }
 
-double bisection(int i,EVec2d& cpsii, double aii)
+double Newton(int i, EVec2d& cpsii, double aii)
 {
-	double a;					//二分法求曲率的导数为零时ti的值，即曲率极值处的ti值
-	double max = 1.0;
-	double min = 0.0;
-	double val0, val1;
-	val0 = dCrvtr(i, min, cpsii,aii);
-	val1 = dCrvtr(i, max, cpsii,aii);
-
-	if (val0 * val1 >= 0.0)
-	{
-		cerr << "bisection error: f(a)*f(b)>=0 \n";
-		return 0;
-	}
 	double EPS = 1.e-12;
-	while ((max - min) >= EPS)
+	double x0, x1;
+	x0 = 0;
+	x1 = 0.5;
+	int k = 0;
+	int MaxIter = 100;
+	while ((fabs(x1 - x0) >= EPS) && (k<MaxIter))
 	{
-		a = (max + min) / 2.0;
-		if (dCrvtr(i, a, cpsii, aii) == 0.0) { break; }
-		else{
-			if (val0 * dCrvtr(i, a, cpsii, aii) < 0.0) {
-				max = a;
-			}
-			else {
-				min = a;
-			}
-
+		x0 = x1;
+		x1 = x0 - dCrvtr(i, x0, cpsii, aii) / ddCrvtr(i, x0, cpsii, aii);
+		if (k > MaxIter)
+		{
+			cerr << "Nexton failed \n";
+			return 0.;
 		}
+		k++;
 	}
-	return a;
-
+	return x1;
 }
+
+//double bisection(int i,EVec2d& cpsii, double aii)
+//{
+//	double a;					//二分法求曲率的导数为零时ti的值，即曲率极值处的ti值
+//	double max = 1.0;
+//	double min = 0.0;
+//	double val0, val1;
+//	val0 = dCrvtr(i, min, cpsii,aii);
+//	val1 = dCrvtr(i, max, cpsii,aii);
+//
+//	if (val0 * val1 >= 0.0)
+//	{
+//		cerr << "bisection error: f(a)*f(b)>=0 \n";
+//		return 0;
+//	}
+//	double EPS = 1.e-12;
+//	while ((max - min) >= EPS)
+//	{
+//		a = (max + min) / 2.0;
+//		if (dCrvtr(i, a, cpsii, aii) == 0.0) { break; }
+//		else{
+//			if (val0 * dCrvtr(i, a, cpsii, aii) < 0.0) {
+//				max = a;
+//			}
+//			else {
+//				min = a;
+//			}
+//
+//		}
+//	}
+//	return a;
+//
+//}
 
 double dCrvtr(int i, double ti, EVec2d& cpsii, double aii)
 {
@@ -918,6 +940,227 @@ double dCrvtr(int i, double ti, EVec2d& cpsii, double aii)
 
 	return value;
 
+}
+
+double ddCrvtr(int i, double ti, EVec2d& cpsii, double aii)
+{
+	double value;									//使用Maxima求出曲率的导数的导数关于ti的表达式
+	double t0, t1, t2, t3, t4, t5, t6, t7, t8;
+
+	t0 = 18. * ci0[i][1] * ci2[i][1] * pow(aii,2.) - 18. * cpsii[1] * ci2[i][1] * pow(aii,2.)
+		- 18. * pow(ci0[i][1],2.) * pow(aii,2.) + 18. * cpsii[1] * ci0[i][1] * pow(aii,2.)
+		+ 18. * ci0[i][0] * ci2[i][0] * pow(aii,2.) - 18. * cpsii[0] * ci2[i][0] * pow(aii,2.)
+		- 18. * pow(ci0[i][0] , 2.) * pow(aii,2.) + 18. * cpsii[0] * ci0[i][0] * pow(aii,2.)
+		- 36. * ci0[i][1] * ci2[i][1] * aii + 36. * cpsii[1] * ci2[i][1] * aii
+		+ 48. * pow(ci0[i][1],2.) * aii - 60. * cpsii[1] * ci0[i][1] * aii + 12. * pow(cpsii[1] , 2.) * aii
+		- 36. * ci0[i][0] * ci2[i][0] * aii + 36. * cpsii[0] * ci2[i][0] * aii
+		+ 48. * pow(ci0[i][0] , 2.) * aii - 60. * cpsii[0] * ci0[i][0] * aii + 12. * pow(cpsii[0] , 2.) * aii
+		+ 18. * ci0[i][1] * ci2[i][1] - 18. * cpsii[1] * ci2[i][1] - 30. * pow(ci0[i][1],2.)
+		+ 42. * cpsii[1] * ci0[i][1] - 12. * pow(cpsii[1] , 2.) + 18. * ci0[i][0] * ci2[i][0]
+		- 18. * cpsii[0] * ci2[i][0] - 30. * pow(ci0[i][0] , 2.) + 42. * cpsii[0] * ci0[i][0] - 12. * pow(cpsii[0] , 2.);
+	t1 = 2. * ((-144. * ci0[i][1] * ci2[i][1] * pow(aii,2.)) + 144. * cpsii[1] * ci2[i][1] * pow(aii,2.)
+		+ 144. * pow(ci0[i][1],2.) * pow(aii,2.)
+		- 144. * cpsii[1] * ci0[i][1] * pow(aii,2.)
+		- 144. * ci0[i][0] * ci2[i][0] * pow(aii,2.)
+		+ 144. * cpsii[0] * ci2[i][0] * pow(aii,2.)
+		+ 144. * pow(ci0[i][0] , 2.) * pow(aii,2.)
+		- 144. * cpsii[0] * ci0[i][0] * pow(aii,2.)
+		+ 258. * ci0[i][1] * ci2[i][1] * aii
+		- 258. * cpsii[1] * ci2[i][1] * aii
+		- 276. * pow(ci0[i][1],2.) * aii
+		+ 294. * cpsii[1] * ci0[i][1] * aii
+		- 18. * pow(cpsii[1] , 2.) * aii
+		+ 258. * ci0[i][0] * ci2[i][0] * aii
+		- 258. * cpsii[0] * ci2[i][0] * aii
+		- 276. * pow(ci0[i][0] , 2.) * aii
+		+ 294. * cpsii[0] * ci0[i][0] * aii
+		- 18. * pow(cpsii[0] , 2.) * aii
+		- 114. * ci0[i][1] * ci2[i][1]
+		+ 114. * cpsii[1] * ci2[i][1] + 126. * pow(ci0[i][1],2.)
+		- 138. * cpsii[1] * ci0[i][1] + 12. * pow(cpsii[1] , 2.)
+		- 114. * ci0[i][0] * ci2[i][0]
+		+ 114. * cpsii[0] * ci2[i][0] + 126. * pow(ci0[i][0] , 2.)
+		- 138. * cpsii[0] * ci0[i][0] + 12. * pow(cpsii[0] , 2.));
+	t2 = 3. * (54. * pow(ci2[i][1] , 2.) * pow(aii , 3.) - 108. * ci0[i][1] * ci2[i][1] * pow(aii , 3.)
+		+ 54. * pow(ci0[i][1],2.) * pow(aii , 3.) + 54. * pow(ci2[i][0] , 2.) * pow(aii , 3.)
+		- 108. * ci0[i][0] * ci2[i][0] * pow(aii , 3.)
+		+ 54. * pow(ci0[i][0] , 2.) * pow(aii , 3.) - 162. * pow(ci2[i][1] , 2.) * pow(aii,2.)
+		+ 774. * ci0[i][1] * ci2[i][1] * pow(aii,2.)
+		- 450. * cpsii[1] * ci2[i][1] * pow(aii,2.)
+		- 612. * pow(ci0[i][1],2.) * pow(aii,2.)
+		+ 450. * cpsii[1] * ci0[i][1] * pow(aii,2.)
+		- 162. * pow(ci2[i][0] , 2.) * pow(aii,2.)
+		+ 774. * ci0[i][0] * ci2[i][0] * pow(aii,2.)
+		- 450. * cpsii[0] * ci2[i][0] * pow(aii,2.)
+		- 612. * pow(ci0[i][0] , 2.) * pow(aii,2.)
+		+ 450. * cpsii[0] * ci0[i][0] * pow(aii,2.)
+		+ 162. * pow(ci2[i][1] , 2.) * aii
+		- 1032. * ci0[i][1] * ci2[i][1] * aii
+		+ 708. * cpsii[1] * ci2[i][1] * aii + 882. * pow(ci0[i][1],2.) * aii
+		- 732. * cpsii[1] * ci0[i][1] * aii + 12. * pow(cpsii[1] , 2.) * aii
+		+ 162. * pow(ci2[i][0] , 2.) * aii
+		- 1032. * ci0[i][0] * ci2[i][0] * aii
+		+ 708. * cpsii[0] * ci2[i][0] * aii + 882. * pow(ci0[i][0] , 2.) * aii
+		- 732. * cpsii[0] * ci0[i][0] * aii + 12. * pow(cpsii[0] , 2.) * aii
+		- 54. * pow(ci2[i][1] , 2.) + 380. * ci0[i][1] * ci2[i][1]
+		- 272. * cpsii[1] * ci2[i][1] - 334. * pow(ci0[i][1],2.)
+		+ 288. * cpsii[1] * ci0[i][1] - 8. * pow(cpsii[1] , 2.) - 54. * pow(ci2[i][0] , 2.)
+		+ 380. * ci0[i][0] * ci2[i][0] - 272. * cpsii[0] * ci2[i][0]
+		- 334. * pow(ci0[i][0] , 2.) + 288. * cpsii[0] * ci0[i][0]
+		- 8. * pow(cpsii[0] , 2.));
+	t3 = 4. * ((-405 * pow(ci2[i][1] , 2.) * pow(aii , 3.)) + 810. * ci0[i][1] * ci2[i][1] * pow(aii , 3.)
+		- 405. * pow(ci0[i][1],2.) * pow(aii , 3.)
+		- 405. * pow(ci2[i][0] , 2.) * pow(aii , 3.)
+		+ 810. * ci0[i][0] * ci2[i][0] * pow(aii , 3.)
+		- 405. * pow(ci0[i][0] , 2.) * pow(aii , 3.)
+		+ 1080. * pow(ci2[i][1] , 2.) * pow(aii,2.)
+		- 2880. * ci0[i][1] * ci2[i][1] * pow(aii,2.)
+		+ 720. * cpsii[1] * ci2[i][1] * pow(aii,2.)
+		+ 1800. * pow(ci0[i][1],2.) * pow(aii,2.)
+		- 720. * cpsii[1] * ci0[i][1] * pow(aii,2.)
+		+ 1080. * pow(ci2[i][0] , 2.) * pow(aii,2.)
+		- 2880. * ci0[i][0] * ci2[i][0] * pow(aii,2.)
+		+ 720. * cpsii[0] * ci2[i][0] * pow(aii,2.)
+		+ 1800. * pow(ci0[i][0] , 2.) * pow(aii,2.)
+		- 720. * cpsii[0] * ci0[i][0] * pow(aii,2.)
+		- 945. * pow(ci2[i][1] , 2.) * aii
+		+ 2910. * ci0[i][1] * ci2[i][1] * aii
+		- 1020. * cpsii[1] * ci2[i][1] * aii
+		- 1965. * pow(ci0[i][1],2.) * aii
+		+ 1020. * cpsii[1] * ci0[i][1] * aii
+		- 945. * pow(ci2[i][0] , 2.) * aii
+		+ 2910. * ci0[i][0] * ci2[i][0] * aii
+		- 1020. * cpsii[0] * ci2[i][0] * aii
+		- 1965. * pow(ci0[i][0] , 2.) * aii
+		+ 1020. * cpsii[0] * ci0[i][0] * aii + 270. * pow(ci2[i][1] , 2.)
+		- 900. * ci0[i][1] * ci2[i][1] + 360. * cpsii[1] * ci2[i][1]
+		+ 630. * pow(ci0[i][1],2.) - 360. * cpsii[1] * ci0[i][1]
+		+ 270. * pow(ci2[i][0] , 2.) - 900. * ci0[i][0] * ci2[i][0]
+		+ 360. * cpsii[0] * ci2[i][0] + 630. * pow(ci0[i][0] , 2.)
+		- 360. * cpsii[0] * ci0[i][0]);
+	t4 = 5. * (1296. * pow(ci2[i][1] , 2.) * pow(aii , 3.) - 2592 * ci0[i][1] * ci2[i][1] * pow(aii , 3.)
+		+ 1296. * pow(ci0[i][1],2.) * pow(aii , 3.)
+		+ 1296. * pow(ci2[i][0] , 2.) * pow(aii , 3.)
+		- 2592. * ci0[i][0] * ci2[i][0] * pow(aii , 3.)
+		+ 1296. * pow(ci0[i][0] , 2.) * pow(aii , 3.)
+		- 3114. * pow(ci2[i][1] , 2.) * pow(aii,2.)
+		+ 6822. * ci0[i][1] * ci2[i][1] * pow(aii,2.)
+		- 594. * cpsii[1] * ci2[i][1] * pow(aii,2.)
+		- 3708. * pow(ci0[i][1],2.) * pow(aii,2.)
+		+ 594. * cpsii[1] * ci0[i][1] * pow(aii,2.)
+		- 3114. * pow(ci2[i][0] , 2.) * pow(aii,2.)
+		+ 6822. * ci0[i][0] * ci2[i][0] * pow(aii,2.)
+		- 594. * cpsii[0] * ci2[i][0] * pow(aii,2.)
+		- 3708. * pow(ci0[i][0] , 2.) * pow(aii,2.)
+		+ 594. * cpsii[0] * ci0[i][0] * pow(aii,2.)
+		+ 2454. * pow(ci2[i][1] , 2.) * aii
+		- 5700. * ci0[i][1] * ci2[i][1] * aii
+		+ 792. * cpsii[1] * ci2[i][1] * aii
+		+ 3246. * pow(ci0[i][1],2.) * aii
+		- 792. * cpsii[1] * ci0[i][1] * aii
+		+ 2454. * pow(ci2[i][0] , 2.) * aii
+		- 5700. * ci0[i][0] * ci2[i][0] * aii
+		+ 792. * cpsii[0] * ci2[i][0] * aii
+		+ 3246. * pow(ci0[i][0] , 2.) * aii
+		- 792. * cpsii[0] * ci0[i][0] * aii - 636. * pow(ci2[i][1] , 2.)
+		+ 1536. * ci0[i][1] * ci2[i][1] - 264. * cpsii[1] * ci2[i][1]
+		- 900. * pow(ci0[i][1],2.) + 264. * cpsii[1] * ci0[i][1]
+		- 636. * pow(ci2[i][0] , 2.) + 1536. * ci0[i][0] * ci2[i][0]
+		- 264. * cpsii[0] * ci2[i][0] - 900. * pow(ci0[i][0] , 2.)
+		+ 264. * cpsii[0] * ci0[i][0]);
+	t5 = 6. * ((-2268. * pow(ci2[i][1] , 2.) * pow(aii , 3.)) + 4536. * ci0[i][1] * ci2[i][1] * pow(aii , 3.)
+		- 2268. * pow(ci0[i][1],2.) * pow(aii , 3.)
+		- 2268. * pow(ci2[i][0] , 2.) * pow(aii , 3.)
+		+ 4536. * ci0[i][0] * ci2[i][0] * pow(aii , 3.)
+		- 2268. * pow(ci0[i][0] , 2.) * pow(aii , 3.)
+		+ 5004. * pow(ci2[i][1] , 2.) * pow(aii,2.)
+		- 10206. * ci0[i][1] * ci2[i][1] * pow(aii,2.)
+		+ 198. * cpsii[1] * ci2[i][1] * pow(aii,2.)
+		+ 5202. * pow(ci0[i][1],2.) * pow(aii,2.)
+		- 198. * cpsii[1] * ci0[i][1] * pow(aii,2.)
+		+ 5004. * pow(ci2[i][0] , 2.) * pow(aii,2.)
+		- 10206. * ci0[i][0] * ci2[i][0] * pow(aii,2.)
+		+ 198. * cpsii[0] * ci2[i][0] * pow(aii,2.)
+		+ 5202. * pow(ci0[i][0] , 2.) * pow(aii,2.)
+		- 198. * cpsii[0] * ci0[i][0] * pow(aii,2.)
+		- 3648. * pow(ci2[i][1] , 2.) * aii
+		+ 7560. * ci0[i][1] * ci2[i][1] * aii
+		- 264. * cpsii[1] * ci2[i][1] * aii
+		- 3912. * pow(ci0[i][1],2.) * aii
+		+ 264. * cpsii[1] * ci0[i][1] * aii
+		- 3648. * pow(ci2[i][0] , 2.) * aii
+		+ 7560. * ci0[i][0] * ci2[i][0] * aii
+		- 264. * cpsii[0] * ci2[i][0] * aii
+		- 3912. * pow(ci0[i][0] , 2.) * aii
+		+ 264. * cpsii[0] * ci0[i][0] * aii + 880. * pow(ci2[i][1] , 2.)
+		- 1848. * ci0[i][1] * ci2[i][1]
+		+ 88. * cpsii[1] * ci2[i][1] + 968. * pow(ci0[i][1],2.)
+		- 88. * cpsii[1] * ci0[i][1] + 880. * pow(ci2[i][0] , 2.)
+		- 1848. * ci0[i][0] * ci2[i][0]
+		+ 88. * cpsii[0] * ci2[i][0] + 968. * pow(ci0[i][0] , 2.)
+		- 88. * cpsii[0] * ci0[i][0]);
+	t6 = 7. * (2268. * pow(ci2[i][1] , 2.) * pow(aii , 3.) - 4536. * ci0[i][1] * ci2[i][1] * pow(aii , 3.)
+		+ 2268. * pow(ci0[i][1],2.) * pow(aii , 3.)
+		+ 2268. * pow(ci2[i][0] , 2.) * pow(aii , 3.)
+		- 4536. * ci0[i][0] * ci2[i][0] * pow(aii , 3.)
+		+ 2268. * pow(ci0[i][0] , 2.) * pow(aii , 3.)
+		- 4698. * pow(ci2[i][1] , 2.) * pow(aii,2.)
+		+ 9396. * ci0[i][1] * ci2[i][1] * pow(aii,2.)
+		- 4698. * pow(ci0[i][1],2.) * pow(aii,2.)
+		- 4698. * pow(ci2[i][0] , 2.) * pow(aii,2.)
+		+ 9396. * ci0[i][0] * ci2[i][0] * pow(aii,2.)
+		- 4698. * pow(ci0[i][0] , 2.) * pow(aii,2.) + 3240. * pow(ci2[i][1] , 2.) * aii
+		- 6480. * ci0[i][1] * ci2[i][1] * aii
+		+ 3240. * pow(ci0[i][1],2.) * aii + 3240. * pow(ci2[i][0] , 2.) * aii
+		- 6480. * ci0[i][0] * ci2[i][0] * aii
+		+ 3240. * pow(ci0[i][0] , 2.) * aii - 744. * pow(ci2[i][1] , 2.)
+		+ 1488. * ci0[i][1] * ci2[i][1] - 744. * pow(ci0[i][1],2.)
+		- 744. * pow(ci2[i][0] , 2.) + 1488. * ci0[i][0] * ci2[i][0]
+		- 744. * pow(ci0[i][0] , 2.));
+	t7 = 8. * ((-1215. * pow(ci2[i][1] , 2.) * pow(aii , 3.)) + 2430. * ci0[i][1] * ci2[i][1] * pow(aii , 3.)
+		- 1215. * pow(ci0[i][1],2.) * pow(aii , 3.)
+		- 1215. * pow(ci2[i][0] , 2.) * pow(aii , 3.)
+		+ 2430. * ci0[i][0] * ci2[i][0] * pow(aii , 3.)
+		- 1215. * pow(ci0[i][0] , 2.) * pow(aii , 3.)
+		+ 2430. * pow(ci2[i][1] , 2.) * pow(aii,2.)
+		- 4860. * ci0[i][1] * ci2[i][1] * pow(aii,2.)
+		+ 2430. * pow(ci0[i][1],2.) * pow(aii,2.)
+		+ 2430. * pow(ci2[i][0] , 2.) * pow(aii,2.)
+		- 4860. * ci0[i][0] * ci2[i][0] * pow(aii,2.)
+		+ 2430. * pow(ci0[i][0] , 2.) * pow(aii,2.)
+		- 1620. * pow(ci2[i][1] , 2.) * aii
+		+ 3240. * ci0[i][1] * ci2[i][1] * aii
+		- 1620. * pow(ci0[i][1],2.) * aii - 1620. * pow(ci2[i][0] , 2.) * aii
+		+ 3240. * ci0[i][0] * ci2[i][0] * aii
+		- 1620. * pow(ci0[i][0] , 2.) * aii + 360. * pow(ci2[i][1] , 2.)
+		- 720. * ci0[i][1] * ci2[i][1] + 360. * pow(ci0[i][1],2.)
+		+ 360. * pow(ci2[i][0] , 2.) - 720. * ci0[i][0] * ci2[i][0]
+		+ 360. * pow(ci0[i][0] , 2.));
+	t8 = 9. * (270. * pow(ci2[i][1] , 2.) * pow(aii , 3.) - 540 * ci0[i][1] * ci2[i][1] * pow(aii , 3.)
+		+ 270. * pow(ci0[i][1],2.) * pow(aii , 3.)
+		+ 270. * pow(ci2[i][0] , 2.) * pow(aii , 3.)
+		- 540. * ci0[i][0] * ci2[i][0] * pow(aii , 3.)
+		+ 270. * pow(ci0[i][0] , 2.) * pow(aii , 3.)
+		- 540. * pow(ci2[i][1] , 2.) * pow(aii,2.)
+		+ 1080. * ci0[i][1] * ci2[i][1] * pow(aii,2.)
+		- 540. * pow(ci0[i][1],2.) * pow(aii,2.)
+		- 540. * pow(ci2[i][0] , 2.) * pow(aii,2.)
+		+ 1080. * ci0[i][0] * ci2[i][0] * pow(aii,2.)
+		- 540. * pow(ci0[i][0] , 2.) * pow(aii,2.)
+		+ 360. * pow(ci2[i][1] , 2.) * aii
+		- 720. * ci0[i][1] * ci2[i][1] * aii
+		+ 360. * pow(ci0[i][1],2.) * aii + 360. * pow(ci2[i][0] , 2.) * aii
+		- 720. * ci0[i][0] * ci2[i][0] * aii
+		+ 360. * pow(ci0[i][0] , 2.) * aii - 80. * pow(ci2[i][1] , 2.)
+		+ 160. * ci0[i][1] * ci2[i][1] - 80. * pow(ci0[i][1],2.)
+		- 80. * pow(ci2[i][0] , 2.) + 160. * ci0[i][0] * ci2[i][0]
+		- 80. * pow(ci0[i][0] , 2.));
+
+	value = t0 + ti * t1 + pow(ti, 2.0) * t2 + pow(ti, 3.0) * t3
+		+ pow(ti, 4.0) * t4 + pow(ti, 5.0) * t5 + pow(ti, 6.0) * t6
+		+ pow(ti, 7.0) * t7 + pow(ti, 8.0) * t8;
+
+	return value;
 }
 
 
