@@ -92,6 +92,7 @@ void menuFunc(int value);
 void saveandload(int value);
 
 void InpPtsFl();
+void SvPtsFl();
 
 void changeai(int i);
 int getaiIndex(int x, int y);
@@ -141,7 +142,7 @@ void myDisplay()
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 
-	Num = cps.size();
+	Num = (int)cps.size();
 
 	/*for (EVec2d& point : cps)
 	{
@@ -239,7 +240,7 @@ void myDisplay()
 	}
 	
 	
-	int num1 = MtrxCps_o.size();		
+	int num1 = (int)MtrxCps_o.size();		
 
 	/*for (int i = 0; i < num1; ++i)
 	{
@@ -254,7 +255,7 @@ void myDisplay()
 
 	}*/
 
-	int num2 = MtrxCps_c.size();
+	int num2 = (int)MtrxCps_c.size();
 
 	/*for (int i = 0; i < num2; ++i)
 	{
@@ -291,7 +292,7 @@ void myDisplay()
 		glPointSize(7);
 		glBegin(GL_POINTS);			//画点
 
-		int n = MtrxCps_c[i].size();
+		int n = (int)MtrxCps_c[i].size();
 
 		for (int j = 0; j < n; j++)
 		{
@@ -337,7 +338,7 @@ void myDisplay()
 	for (int i = 0; i < num1; ++i)			//画多条开式ek-curve
 	{
 		opened_ekcurve(MtrxCps_o[i],Mtrxai_o[i]);
-		int n = MtrxCps_o[i].size();
+		int n = (int)MtrxCps_o[i].size();
 		for (int j = 0; j < n-2; j++)
 		{
 			drawQuBzr(ci0[j], ci1[j], ci2[j],Mtrxai_o[i][j]);
@@ -348,7 +349,7 @@ void myDisplay()
 	for (int i = 0; i < num2; ++i)			//画多条闭式ek-curve
 	{
 		closed_ekcurve(MtrxCps_c[i],Mtrxai_c[i]);
-		int n = MtrxCps_c[i].size();
+		int n = (int)MtrxCps_c[i].size();
 		for (int j = 0; j < n; j++)
 		{
 			drawQuBzr(ci0[j], ci1[j], ci2[j],Mtrxai_c[i][j]);
@@ -460,7 +461,7 @@ void myKeyboard(unsigned char key, int x, int y)
 
 void opened_ekcurve(vecEg2dd& cpsi, vector<double>& ai)
 {
-	int PntNum = cpsi.size();
+	int PntNum = (int)cpsi.size();
 	int CntNum = PntNum - 2;
 	lambdai.clear();
 	lambdai.resize(CntNum, 0.5);
@@ -515,7 +516,7 @@ void opened_ekcurve(vecEg2dd& cpsi, vector<double>& ai)
 
 void closed_ekcurve(vecEg2dd& cpsi, vector<double>& ai)
 {
-	int numi = cpsi.size();
+	int numi = (int)cpsi.size();
 	lambdai.clear();
 	lambdai.resize(numi, 0.5);
 	ti.clear();
@@ -1348,7 +1349,7 @@ void changeai(int i)
 	}
 	else
 	{
-		if (cps.size() > 1)
+		if ( cps.size() > 1)
 		{
 			cout << "Please enter the value of a(2/3<=a<1)" << endl;
 			cin >> a;
@@ -1483,6 +1484,7 @@ void saveandload(int value)
 	switch (value)
 	{
 	case 3:
+		SvPtsFl();
 		break;
 	case 4:
 		InpPtsFl();
@@ -1490,6 +1492,77 @@ void saveandload(int value)
 	
 	}
 	glutPostRedisplay();
+}
+
+void SvPtsFl()
+{
+	// The filter for txt files
+	const char* filePatterns[1] = { "*.txt" };
+
+	// Get the file name
+	const char* filename = tinyfd_saveFileDialog("Save Ek curves", "Ekcurve.txt", 1, filePatterns, NULL);
+
+	ofstream outfile(filename);
+
+	if (!outfile.is_open())
+		cout << "Open file failed" << endl;
+	if (filename)
+	{
+		//存储封闭ek-curve控制点
+		int num1 = (int)Mtrxai_c.size();
+		for (int i = 0; i < num1; ++i)
+		{
+			// Get the number of Bezier curves
+			int Pntnum = (int)MtrxCps_c[i].size();
+
+			// Write the number of bezier curves found
+			outfile << "arcs <" << Pntnum << ">" << '\t' << "# number of arcs following" << '\n';
+			outfile << "arc <" << Pntnum << ">" << '\t' << "# degree = number of control points - 1" << '\n';
+
+			outfile << "closed" << '\t' << "# type of ek-curve" << '\n';
+
+			// Traverse through the control points of the curve
+			for (int j = 0; j < Pntnum; j++ )
+			{
+				
+					//		// Write the current control point (only x and y)
+				outfile << "<" << MtrxCps_c[i][j].x() << " " << MtrxCps_c[i][j].y() << " " << Mtrxai_c[i][j] << ">" << '\t' << "# control point as two floats separated by blank" << '\n';
+			}
+
+			//	// Write the end of the arc
+			outfile << "endarc" << '\t' << "# terminates arc description" << '\n';
+		}
+
+		//存储开式ek-curve控制点
+		int num2 = (int)Mtrxai_o.size();
+		for (int i = 0; i < num2; ++i)
+		{
+			// Get the number of Bezier curves
+			int Pntnum = (int)MtrxCps_o[i].size();
+
+			// Write the number of bezier curves found
+			outfile << "arcs <" << Pntnum << ">" << '\t' << "# number of arcs following" << '\n';
+			outfile << "arc <" << Pntnum << ">" << '\t' << "# degree = number of control points - 1" << '\n';
+
+			outfile << "opened" << '\t' << "# type of ek-curve" << '\n';
+
+			// Traverse through the control points of the curve
+			for (int j = 0; j < Pntnum; j++)
+			{
+
+				//		// Write the current control point (only x and y)
+				outfile << "<" << MtrxCps_o[i][j].x() << " " << MtrxCps_o[i][j].y() << " " << Mtrxai_o[i][j] << ">" << '\t' << "# control point as two floats separated by blank" << '\n';
+			}
+
+			//	// Write the end of the arc
+			outfile << "endarc" << '\t' << "# terminates arc description" << '\n';
+		}
+		
+	}
+
+	// Close the file
+	outfile.close();
+	
 }
 
 void InpPtsFl()
@@ -1508,82 +1581,86 @@ void InpPtsFl()
 	if (!infile.is_open())
 		cout << "Open file failed" << endl;
 
-	// Read the file line by line
-	while (getline(infile, line))
+	if (filename)
 	{
-		// Split the line with the comment char
-		vector<string> tokens = Utils::split(line, '#');
-
-		// Discard the comments, split by blanks
-		tokens = Utils::split(tokens.at(0), ' ');
-
-		// Take the command of the line and trim it
-		string first = tokens.at(0);
-		Utils::trim_inplace(first);
-
-		// Compare the command and check which one is
-		if (first.compare("arcs") == 0)
+		// Read the file line by line
+		while (getline(infile, line))
 		{
-			// DO NOTHING!
-			// This field is irrelevant since curves are allocated dinamycally
+			// Split the line with the comment char
+			vector<string> tokens = Utils::split(line, '#');
 
-			std::cout << "arcs = " << tokens.at(1) << std::endl;
+			// Discard the comments, split by blanks
+			tokens = Utils::split(tokens.at(0), ' ');
+
+			// Take the command of the line and trim it
+			string first = tokens.at(0);
+			Utils::trim_inplace(first);
+
+			// Compare the command and check which one is
+			if (first.compare("arcs") == 0)
+			{
+				// DO NOTHING!
+				// This field is irrelevant since curves are allocated dinamycally
+
+				std::cout << "arcs = " << tokens.at(1) << std::endl;
+			}
+			else if (first.compare("arc") == 0)
+			{
+				// DO NOTHING!
+				// This field is irrelevant since curve points are allocated dinamycally
+
+				std::cout << "arc = " << tokens.at(1) << std::endl;
+			}
+
+			else if (first.compare("closed") == 0)
+			{
+				closedflag = true;
+				cout << "closed ek-curve" << endl;
+			}
+
+			else if (first.compare("opened") == 0)
+			{
+				closedflag = false;
+				cout << "opened ek-curve" << endl;
+			}
+
+			else if (first.compare("endarc") == 0)
+			{
+				std::cout << "endarc" << std::endl;
+				endcurve();
+			}
+
+			else
+			{
+				// Get the X value of the point (trim blanks and <>)
+				std::string sx = tokens.at(0);
+				Utils::trim_inplace(sx);
+				Utils::trim_inplace(sx, "<>");
+				double x = std::stod(sx);
+
+				// Get the Y value of the point (trim blanks and <>)
+				std::string sy = tokens.at(1);
+				Utils::trim_inplace(sy);
+				Utils::trim_inplace(sy, "<>");
+				double y = std::stod(sy);
+
+				// Get the a value
+				std::string sa = tokens.at(2);
+				Utils::trim_inplace(sa);
+				Utils::trim_inplace(sa, "<>");
+				double a = std::stod(sa);
+
+				std::cout << "double (" << x << ", " << y << "," << a << ")" << std::endl;
+
+				// Generate a new point ans push it into the control points for the new current curve
+				cps.push_back(EVec2d(x, y));
+				ai.push_back(a);
+
+			}
+
 		}
-		else if (first.compare("arc") == 0)
-		{
-			// DO NOTHING!
-			// This field is irrelevant since curve points are allocated dinamycally
-
-			std::cout << "arc = " << tokens.at(1) << std::endl;
-		}
-
-		else if (first.compare("closed") == 0)
-		{
-			closedflag = true;
-			cout << "closed ek-curve" << endl;
-		}
-
-		else if (first.compare("opened") == 0)
-		{
-			closedflag = false;
-			cout << "opened ek-curve" << endl;
-		}
-
-		else if (first.compare("endarc") == 0)
-		{
-			std::cout << "endarc" << std::endl;
-			endcurve();
-		}
-
-		else
-		{
-			// Get the X value of the point (trim blanks and <>)
-			std::string sx = tokens.at(0);
-			Utils::trim_inplace(sx);
-			Utils::trim_inplace(sx, "<>");
-			double x = std::stod(sx);
-
-			// Get the Y value of the point (trim blanks and <>)
-			std::string sy = tokens.at(1);
-			Utils::trim_inplace(sy);
-			Utils::trim_inplace(sy, "<>");
-			double y = std::stod(sy);
-
-			// Get the a value
-			std::string sa = tokens.at(2);
-			Utils::trim_inplace(sa);
-			Utils::trim_inplace(sa, "<>");
-			double a = std::stod(sa);
-
-			std::cout << "double (" << x << ", " << y << "," << a << ")" << std::endl;
-
-			// Generate a new point ans push it into the control points for the new current curve
-			cps.push_back(EVec2d(x, y));
-			ai.push_back(a);
-
-		}
-
 	}
+
 	infile.close();
 
 }
