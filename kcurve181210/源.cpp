@@ -1,8 +1,15 @@
 ﻿#include<gl/glut.h>
 #include<vector>
+#include <Eigen/LU>
 #include<Eigen/Dense>
+#include <Eigen/StdVector>
 #include<iostream>
 #include<math.h>
+#include<fstream>
+#include <chrono>		//时间库
+
+#include "tinyfiledialogs.h"
+#include "utils1.h"
 
 //#include <glew.h>
 //#include <freeglut.h>
@@ -82,10 +89,14 @@ void myKeyboard(unsigned char key, int x, int y);
 void MouseMove(int x, int y);
 
 void menuFunc(int value);
-//void multikcrv();
+void saveandload(int value);
+
+void InpPtsFl();
 
 void changeai(int i);
 int getaiIndex(int x, int y);
+
+void endcurve();
 
 void myInit()
 {
@@ -103,6 +114,24 @@ void myReshape(int w,int h)
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluOrtho2D(0, w, 0, h);
+}
+
+void endcurve()
+{
+	if (closedflag)
+	{
+		MtrxCps_c.push_back({ cps });			//闭式eK-curve点矩阵
+		Mtrxai_c.push_back({ ai });				//ai值矩阵
+	}
+	if (!closedflag)
+	{
+		MtrxCps_o.push_back({ cps });			//开式eK-curve点矩阵
+		Mtrxai_o.push_back({ ai });				//ai值矩阵
+	}
+
+	flag0 = false;
+	cps.clear();
+	ai.clear();
 }
 
 void myDisplay()
@@ -206,23 +235,9 @@ void myDisplay()
 
 	if (flag0)
 	{
-		if (closedflag)
-		{
-			MtrxCps_c.push_back({ cps });			//闭式eK-curve点矩阵
-			Mtrxai_c.push_back({ ai });				//ai值矩阵
-		}
-		if (!closedflag)
-		{
-			MtrxCps_o.push_back({ cps });			//开式eK-curve点矩阵
-			Mtrxai_o.push_back({ ai });				//ai值矩阵
-		}
-		
-		flag0 = false;
-		cps.clear();
-		ai.clear();
+		endcurve();
 	}
 	
-
 	
 	int num1 = MtrxCps_o.size();		
 
@@ -437,25 +452,10 @@ void myKeyboard(unsigned char key, int x, int y)
 		flag0 = true;
 		cout << "e" << endl;
 		
+		
 	}
 	glutPostRedisplay();
 }
-
-//void multikcrv() {
-//	cout << "multikcrv" << endl;
-//	MtrxCps.push_back({ cps });
-//	int num1 = MtrxCps.size();
-//	for (int i = 0; i < num1; ++i)
-//	{
-//		Num = cps.size();
-//		cout << "Num:" << Num << endl;
-//		cout << "i:" << i << endl;
-//		//if(Num>3)
-//		kcurve(MtrxCps[i]);
-//	}
-//	cps.clear();
-//}
-
 
 
 void opened_ekcurve(vecEg2dd& cpsi, vector<double>& ai)
@@ -1478,9 +1478,119 @@ void menuFunc(int value)
 	glutPostRedisplay();
 }
 
+void saveandload(int value)
+{
+	switch (value)
+	{
+	case 3:
+		break;
+	case 4:
+		InpPtsFl();
+		break;
+	
+	}
+	glutPostRedisplay();
+}
+
+void InpPtsFl()
+{
+	// The filter for txt files
+	const char* filePatterns[1] = { "*.txt" };
+
+	// Display the open file dialog
+	const char* filename = tinyfd_openFileDialog("Import a Points File", "", 1, filePatterns, NULL, 0);
+
+	// Open the file as an input stream file 
+	ifstream infile(filename);
+	// The string where individual lines will be stored
+	string line;
+
+	if (!infile.is_open())
+		cout << "Open file failed" << endl;
+
+	// Read the file line by line
+	while (getline(infile, line))
+	{
+		// Split the line with the comment char
+		vector<string> tokens = Utils::split(line, '#');
+
+		// Discard the comments, split by blanks
+		tokens = Utils::split(tokens.at(0), ' ');
+
+		// Take the command of the line and trim it
+		string first = tokens.at(0);
+		Utils::trim_inplace(first);
+
+		// Compare the command and check which one is
+		if (first.compare("arcs") == 0)
+		{
+			// DO NOTHING!
+			// This field is irrelevant since curves are allocated dinamycally
+
+			std::cout << "arcs = " << tokens.at(1) << std::endl;
+		}
+		else if (first.compare("arc") == 0)
+		{
+			// DO NOTHING!
+			// This field is irrelevant since curve points are allocated dinamycally
+
+			std::cout << "arc = " << tokens.at(1) << std::endl;
+		}
+
+		else if (first.compare("closed") == 0)
+		{
+			closedflag = true;
+			cout << "closed ek-curve" << endl;
+		}
+
+		else if (first.compare("opened") == 0)
+		{
+			closedflag = false;
+			cout << "opened ek-curve" << endl;
+		}
+
+		else if (first.compare("endarc") == 0)
+		{
+			std::cout << "endarc" << std::endl;
+			endcurve();
+		}
+
+		else
+		{
+			// Get the X value of the point (trim blanks and <>)
+			std::string sx = tokens.at(0);
+			Utils::trim_inplace(sx);
+			Utils::trim_inplace(sx, "<>");
+			double x = std::stod(sx);
+
+			// Get the Y value of the point (trim blanks and <>)
+			std::string sy = tokens.at(1);
+			Utils::trim_inplace(sy);
+			Utils::trim_inplace(sy, "<>");
+			double y = std::stod(sy);
+
+			// Get the a value
+			std::string sa = tokens.at(2);
+			Utils::trim_inplace(sa);
+			Utils::trim_inplace(sa, "<>");
+			double a = std::stod(sa);
+
+			std::cout << "double (" << x << ", " << y << "," << a << ")" << std::endl;
+
+			// Generate a new point ans push it into the control points for the new current curve
+			cps.push_back(EVec2d(x, y));
+			ai.push_back(a);
+
+		}
+
+	}
+	infile.close();
+
+}
+
 int main(int argc, char **argv)
 {
-	int menu;
+	int menu,submenu1;
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
 	glutInitWindowSize(winwidth, winHeight);
@@ -1493,9 +1603,14 @@ int main(int argc, char **argv)
 	glutMotionFunc(MouseMove);
 	glutKeyboardFunc(myKeyboard);
 
+
+	submenu1 = glutCreateMenu(saveandload);
+	glutAddMenuEntry("Save", 3);
+	glutAddMenuEntry("Import", 4);
 	menu = glutCreateMenu(menuFunc);
 	glutAddMenuEntry("Draw Ek-curve", 1);
 	glutAddMenuEntry("Change a", 2);
+	glutAddSubMenu("Save & Import", submenu1);
 	glutAddMenuEntry("Exit", 999);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 

@@ -1,0 +1,11 @@
+arcs <8>	# number of arcs following
+arc <8>	# degree = number of control points - 1
+<237 166 0.666667>	# control point as two floats separated by blank
+<201 106 0.666667>	# control point as two floats separated by blank
+<306 78 0.666667>	# control point as two floats separated by blank
+<400 129 0.666667>	# control point as two floats separated by blank
+<420 241 0.666667>	# control point as two floats separated by blank
+<304 289 0.666667>	# control point as two floats separated by blank
+<217 279 0.666667>	# control point as two floats separated by blank
+<168 201 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
