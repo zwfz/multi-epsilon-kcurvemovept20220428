@@ -52,6 +52,11 @@ GLsizei winHeight = 800;
 bool mouseLeftDown;
 bool mouseRightDown;
 int Num,i0;
+
+int px = 0; 
+int py = 0;
+int aiIndex = 0;
+
 bool flag0 = false;
 bool closedflag = false;
 
@@ -87,6 +92,7 @@ bool checkpt(int x, int y);
 void OnMouse(int button, int state, int x, int y);
 void myKeyboard(unsigned char key, int x, int y);
 void MouseMove(int x, int y);
+void PassiveMouseMotion(int x, int y);
 
 void menuFunc(int value);
 void saveandload(int value);
@@ -177,9 +183,9 @@ void myDisplay()
 	glEnd();
 
 	
-	if (Num > 2)
+	if (Num > 1)
 	{
-		if ((Num>3) && closedflag)
+		if ((Num>2) && closedflag)
 		{
 			closed_ekcurve(cps,ai);
 			for (int j = 0; j < Num; ++j)
@@ -190,12 +196,29 @@ void myDisplay()
 		}
 		if (!closedflag)
 		{
-			opened_ekcurve(cps,ai);
-			for (int j = 0; j < Num-2; ++j)
+			if (Num > 2)
 			{
-				drawQuBzr(ci0[j], ci1[j], ci2[j],ai[j]);
-				drawCrvtrVctrClmn(ci0[j], ci1[j], ci2[j], ai[j]);
+				opened_ekcurve(cps, ai);
+				for (int j = 0; j < Num - 2; ++j)
+				{
+					drawQuBzr(ci0[j], ci1[j], ci2[j], ai[j]);
+					drawCrvtrVctrClmn(ci0[j], ci1[j], ci2[j], ai[j]);
+				}
 			}
+			else
+			{
+				//如果只有两个点，画直线
+				glColor3f(1, 0, 0);		//红色
+				glLineWidth(3);
+				glBegin(GL_LINE_STRIP);   //画线
+				for (int i = 0; i < Num; ++i)
+				{
+					glVertex2d(cps[i][0], cps[i][1]);
+				}
+				glEnd();
+			}
+			
+			
 		}
 		
 
@@ -337,12 +360,29 @@ void myDisplay()
 
 	for (int i = 0; i < num1; ++i)			//画多条开式ek-curve
 	{
-		opened_ekcurve(MtrxCps_o[i],Mtrxai_o[i]);
+		
 		int n = (int)MtrxCps_o[i].size();
-		for (int j = 0; j < n-2; j++)
+		if (n > 2)
 		{
-			drawQuBzr(ci0[j], ci1[j], ci2[j],Mtrxai_o[i][j]);
+			opened_ekcurve(MtrxCps_o[i], Mtrxai_o[i]);
+			for (int j = 0; j < n - 2; j++)
+			{
+				drawQuBzr(ci0[j], ci1[j], ci2[j], Mtrxai_o[i][j]);
+			}
 		}
+		else
+		{
+			//如果只有两个点，画直线
+			glColor3f(1, 0, 0);		//红色
+			glLineWidth(3);
+			glBegin(GL_LINE_STRIP);   //画线
+			for (int j = 0; j < n; ++j)
+			{
+				glVertex2d(MtrxCps_o[i][j][0], MtrxCps_o[i][j][1]);
+			}
+			glEnd();
+		}
+		
 
 	}
 
@@ -1370,7 +1410,15 @@ int getaiIndex(int x, int y)
 	{
 		
 		if (fabs(cps[i][0] - (double)x) < 5. || fabs(cps[i][1] - (double)y) < 5.)
-			return i;
+			if (closedflag)
+			{
+				return i;
+			}
+			else
+			{
+				return i - 1;
+			}
+			
 
 	}
 	return -1;
@@ -1394,7 +1442,7 @@ void OnMouse(int button, int state, int x, int y)
 		{
 			cps.push_back(EVec2d(x, winHeight - y));
 
-			if ((Num>3) &&(checkpt(x, winHeight - y)))
+			if ((Num>2) &&(checkpt(x, winHeight - y)))
 			{
 				cps[0][0] = x;					//若终点与起点重合，则起始点合为一点，变为闭式ek-curve
 				cps[0][1] = winHeight - y;
@@ -1408,12 +1456,18 @@ void OnMouse(int button, int state, int x, int y)
 		}
 		else
 		{
-			int i = getaiIndex(x, winHeight - y);
-			if (i >= 0) {
+			int Index = getaiIndex(x, winHeight - y);
+			if (Index > -1)
+			{
+				aiIndex = Index;
+				cout << aiIndex << endl;
+			}
+			
+			/*if (i >= 0) {
 				changeai(i);
 			}
 			
-			aiflag = false;
+			aiflag = false;*/
 		}
 		
 		
@@ -1430,10 +1484,27 @@ void OnMouse(int button, int state, int x, int y)
 
 void MouseMove(int x, int y)
 {
+	if (!aiflag)
+	{
+		cps[Num - 1][0] = x;
+		cps[Num - 1][1] = winHeight - y;
+	}
+	else
+	{
+		int dx = x - px;
+		
+		if (ai[aiIndex] >= 2. / 3. && ai[aiIndex] < 1)
+		{
+			ai[aiIndex] += dx / 10000.;
+		}
+		else
+		{
+			ai[aiIndex] = defaultai;
+		}
+		
+		
+	}
 
-	cps[Num - 1][0] = x;
-	cps[Num - 1][1] = winHeight - y;
-	
 	glutPostRedisplay();
 }
 
@@ -1465,6 +1536,7 @@ void menuFunc(int value)
 	{
 	case 1:
 		closedflag = false;
+		aiflag = false;
 		break;
 
 	case 2:
@@ -1653,7 +1725,7 @@ void InpPtsFl()
 				std::cout << "double (" << x << ", " << y << "," << a << ")" << std::endl;
 
 				// Generate a new point ans push it into the control points for the new current curve
-				cps.push_back(EVec2d(x, y));
+				cps.push_back(EVec2d(x, winHeight - y));
 				ai.push_back(a);
 
 			}
@@ -1663,6 +1735,12 @@ void InpPtsFl()
 
 	infile.close();
 
+}
+
+void PassiveMouseMotion(int x, int y)
+{
+	px = x;
+	py = winHeight - y;
 }
 
 int main(int argc, char **argv)
@@ -1678,6 +1756,7 @@ int main(int argc, char **argv)
 	glutDisplayFunc(myDisplay);
 	glutMouseFunc(OnMouse);
 	glutMotionFunc(MouseMove);
+	glutPassiveMotionFunc(PassiveMouseMotion);
 	glutKeyboardFunc(myKeyboard);
 
 
