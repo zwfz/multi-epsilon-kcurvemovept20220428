@@ -17,6 +17,7 @@
 /*使用二分法求ti 20220513*/
 /*实现画曲率直方图 20220514*/
 /*改用牛顿法求ti 20220523*/
+/*提高画多条线效率，只计算一次ci0,ci1,ci2的值存入矩阵，不用每次计算 20220624*/
 
 
 using namespace std;
@@ -36,24 +37,33 @@ vecEg2dd cps,ci0,ci1,ci2,cti,dcti;
 
 vecEg2dd dcps;
 
-VvecEg2dd MtrxCps_o,MtrxCps_c;				//控制点矩阵
+VvecEg2dd MtrxCps_o,MtrxCps_c;				//输入控制点矩阵
+
+VvecEg2dd Mtrxci0_o, Mtrxci1_o, Mtrxci2_o;		//开式ek-curve Bezier 控制点矩阵
+VvecEg2dd Mtrxci0_c, Mtrxci1_c, Mtrxci2_c;		//闭式ek-curve Bezier 控制点矩阵
 
 vector<double> ti;
+
 vector<double> lambdai;
+
 vector<double> theta;
+
 vector<double> ai;
 
 Vvector Mtrxai_o,Mtrxai_c;				//ai的矩阵
 
 double defaultai = 2. / 3.;
 
-GLsizei winwidth = 800;
-GLsizei winHeight = 800;
+GLsizei winwidth = 1600;
+GLsizei winHeight = 900;
 bool mouseLeftDown;
 bool mouseRightDown;
-int Num,i0;
+int Num, i0;
 
-int px = 0; 
+
+
+
+int px = 0;
 int py = 0;
 int aiIndex = 0;
 
@@ -112,7 +122,7 @@ void myInit()
 	glClearColor(0.0, 0.0, 0.0, 0);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluOrtho2D(0,800,0, 800);
+	gluOrtho2D(0,winwidth,0, winHeight);
 }
 
 void myReshape(int w,int h)
@@ -129,11 +139,17 @@ void endcurve()
 	{
 		MtrxCps_c.push_back({ cps });			//闭式eK-curve点矩阵
 		Mtrxai_c.push_back({ ai });				//ai值矩阵
+		Mtrxci0_c.push_back({ ci0 });			//ci.0, ci.1,ci.2矩阵
+		Mtrxci1_c.push_back({ ci1 });
+		Mtrxci2_c.push_back({ ci2 });
 	}
 	if (!closedflag)
 	{
 		MtrxCps_o.push_back({ cps });			//开式eK-curve点矩阵
 		Mtrxai_o.push_back({ ai });				//ai值矩阵
+		Mtrxci0_o.push_back({ ci0 });			//ci.0, ci.1,ci.2矩阵
+		Mtrxci1_o.push_back({ ci1 });
+		Mtrxci2_o.push_back({ ci2 });
 	}
 
 	flag0 = false;
@@ -364,10 +380,10 @@ void myDisplay()
 		int n = (int)MtrxCps_o[i].size();
 		if (n > 2)
 		{
-			opened_ekcurve(MtrxCps_o[i], Mtrxai_o[i]);
+			//opened_ekcurve(MtrxCps_o[i], Mtrxai_o[i]);
 			for (int j = 0; j < n - 2; j++)
 			{
-				drawQuBzr(ci0[j], ci1[j], ci2[j], Mtrxai_o[i][j]);
+				drawQuBzr(Mtrxci0_o[i][j], Mtrxci1_o[i][j], Mtrxci2_o[i][j], Mtrxai_o[i][j]);
 			}
 		}
 		else
@@ -388,11 +404,11 @@ void myDisplay()
 
 	for (int i = 0; i < num2; ++i)			//画多条闭式ek-curve
 	{
-		closed_ekcurve(MtrxCps_c[i],Mtrxai_c[i]);
+		//closed_ekcurve(MtrxCps_c[i],Mtrxai_c[i]);
 		int n = (int)MtrxCps_c[i].size();
 		for (int j = 0; j < n; j++)
 		{
-			drawQuBzr(ci0[j], ci1[j], ci2[j],Mtrxai_c[i][j]);
+			drawQuBzr(Mtrxci0_c[i][j], Mtrxci1_c[i][j], Mtrxci2_c[i][j], Mtrxai_c[i][j]);
 		}
 
 	}
@@ -1409,7 +1425,7 @@ int getaiIndex(int x, int y)
 	for (int i = 0; i< Num; i++)
 	{
 		
-		if (fabs(cps[i][0] - (double)x) < 5. || fabs(cps[i][1] - (double)y) < 5.)
+		if (fabs(cps[i][0] - (double)x) < 3. || fabs(cps[i][1] - (double)y) < 3.)
 			if (closedflag)
 			{
 				return i;
@@ -1725,7 +1741,8 @@ void InpPtsFl()
 				std::cout << "double (" << x << ", " << y << "," << a << ")" << std::endl;
 
 				// Generate a new point ans push it into the control points for the new current curve
-				cps.push_back(EVec2d(x, winHeight - y));
+				//cps.push_back(EVec2d(x, winHeight - y));
+				cps.push_back(EVec2d(x, y));
 				ai.push_back(a);
 
 			}
@@ -1749,7 +1766,7 @@ int main(int argc, char **argv)
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_SINGLE | GLUT_RGB);
 	glutInitWindowSize(winwidth, winHeight);
-	glutInitWindowPosition(400, 150);
+	glutInitWindowPosition(100, 10);
 	glutCreateWindow("ek-curve");
 	myInit();
 	glutReshapeFunc(myReshape);

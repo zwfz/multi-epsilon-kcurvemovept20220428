@@ -1,0 +1,298 @@
+arcs <4>	# number of arcs following
+arc <4>	# degree = number of control points - 1
+opened	# type of ek-curve
+<516 580 0.666667>	# control point as two floats separated by blank
+<480 628 0.666667>	# control point as two floats separated by blank
+<380 650 0.666667>	# control point as two floats separated by blank
+<284 616 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened	# type of ek-curve
+<284 616 0.666667>	# control point as two floats separated by blank
+<200 620 0.666667>	# control point as two floats separated by blank
+<124 564 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened	# type of ek-curve
+<124 564 0.666667>	# control point as two floats separated by blank
+<170 560 0.666667>	# control point as two floats separated by blank
+<204 548 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <4>	# number of arcs following
+arc <4>	# degree = number of control points - 1
+opened	# type of ek-curve
+<220 560 0.666667>	# control point as two floats separated by blank
+<170 440 0.666667>	# control point as two floats separated by blank
+<180 360 0.666667>	# control point as two floats separated by blank
+<272 234 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened	# type of ek-curve
+<272 234 0.666667>	# control point as two floats separated by blank
+<280 140 0.666667>	# control point as two floats separated by blank
+<328 92 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened	# type of ek-curve
+<328 92 0.666667>	# control point as two floats separated by blank
+<334 180 0.666667>	# control point as two floats separated by blank
+<340 214 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened	# type of ek-curve
+<292 200 0.666667>	# control point as two floats separated by blank
+<300 140 0.666667>	# control point as two floats separated by blank
+<320 116 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened	# type of ek-curve
+<334 180 0.666667>	# control point as two floats separated by blank
+<370 220 0.666667>	# control point as two floats separated by blank
+<434 252 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <8>	# number of arcs following
+arc <8>	# degree = number of control points - 1
+opened	# type of ek-curve
+<516 580 0.666667>	# control point as two floats separated by blank
+<572 540 0.666667>	# control point as two floats separated by blank
+<568 528 0.666667>	# control point as two floats separated by blank
+<532 520 0.666667>	# control point as two floats separated by blank
+<496 538 0.666667>	# control point as two floats separated by blank
+<440 552 0.666667>	# control point as two floats separated by blank
+<380 540 0.666667>	# control point as two floats separated by blank
+<340 508 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <4>	# number of arcs following
+arc <4>	# degree = number of control points - 1
+opened	# type of ek-curve
+<340 508 0.666667>	# control point as two floats separated by blank
+<332 464 0.666667>	# control point as two floats separated by blank
+<300 440 0.666667>	# control point as two floats separated by blank
+<276 424 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <7>	# number of arcs following
+arc <7>	# degree = number of control points - 1
+opened	# type of ek-curve
+<292 508 0.666667>	# control point as two floats separated by blank
+<256 480 0.666667>	# control point as two floats separated by blank
+<248 440 0.666667>	# control point as two floats separated by blank
+<252 412 0.666667>	# control point as two floats separated by blank
+<264 408 0.666667>	# control point as two floats separated by blank
+<276 424 0.666667>	# control point as two floats separated by blank
+<284 444 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <6>	# number of arcs following
+arc <6>	# degree = number of control points - 1
+opened	# type of ek-curve
+<252 412 0.666667>	# control point as two floats separated by blank
+<250 340 0.666667>	# control point as two floats separated by blank
+<272 280 0.666667>	# control point as two floats separated by blank
+<308 258 0.666667>	# control point as two floats separated by blank
+<380 276 0.666667>	# control point as two floats separated by blank
+<434 252 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <5>	# number of arcs following
+arc <5>	# degree = number of control points - 1
+opened	# type of ek-curve
+<536 518 0.666667>	# control point as two floats separated by blank
+<540 504 0.666667>	# control point as two floats separated by blank
+<526 494 0.666667>	# control point as two floats separated by blank
+<474 510 0.666667>	# control point as two floats separated by blank
+<446 508 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened	# type of ek-curve
+<532 520 0.666667>	# control point as two floats separated by blank
+<524 506 0.666667>	# control point as two floats separated by blank
+<496 538 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <6>	# number of arcs following
+arc <6>	# degree = number of control points - 1
+opened	# type of ek-curve
+<474 510 0.666667>	# control point as two floats separated by blank
+<420 480 0.666667>	# control point as two floats separated by blank
+<392 454 0.666667>	# control point as two floats separated by blank
+<292 380 0.666667>	# control point as two floats separated by blank
+<288 320 0.666667>	# control point as two floats separated by blank
+<308 258 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <5>	# number of arcs following
+arc <5>	# degree = number of control points - 1
+opened	# type of ek-curve
+<420 480 0.666667>	# control point as two floats separated by blank
+<418 450 0.666667>	# control point as two floats separated by blank
+<390 410 0.666667>	# control point as two floats separated by blank
+<368 400 0.666667>	# control point as two floats separated by blank
+<372 434 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened	# type of ek-curve
+<392 454 0.666667>	# control point as two floats separated by blank
+<372 434 0.666667>	# control point as two floats separated by blank
+<370 420 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <4>	# number of arcs following
+arc <4>	# degree = number of control points - 1
+closed	# type of ek-curve
+<460 590 0.666667>	# control point as two floats separated by blank
+<470 580 0.666667>	# control point as two floats separated by blank
+<460 570 0.666667>	# control point as two floats separated by blank
+<450 580 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <6>	# number of arcs following
+arc <6>	# degree = number of control points - 1
+closed  # type of ek-curve
+<607 687 0.666667>	# control point as two floats separated by blank
+<612 676 0.666667>	# control point as two floats separated by blank
+<605 667 0.666667>	# control point as two floats separated by blank
+<593 668 0.666667>	# control point as two floats separated by blank
+<589 678 0.666667>	# control point as two floats separated by blank
+<596 687 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened  # type of ek-curve
+<607 687 0.666667>	# control point as two floats separated by blank
+<614 698 0.666667>	# control point as two floats separated by blank
+<616 708 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened  # type of ek-curve
+<596 687 0.666667>	# control point as two floats separated by blank
+<580 713 0.666667>	# control point as two floats separated by blank
+<556 730 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened  # type of ek-curve
+<589 678 0.666667>	# control point as two floats separated by blank
+<540 684 0.666667>	# control point as two floats separated by blank
+<485 669 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened  # type of ek-curve
+<593 668 0.666667>	# control point as two floats separated by blank
+<560 629 0.666667>	# control point as two floats separated by blank
+<515 593 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened  # type of ek-curve
+<605 667 0.666667>	# control point as two floats separated by blank
+<612 630 0.666667>	# control point as two floats separated by blank
+<605 595 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened  # type of ek-curve
+<612 676 0.666667>	# control point as two floats separated by blank
+<624 670 0.666667>	# control point as two floats separated by blank
+<635 662 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <6>	# number of arcs following
+arc <6>	# degree = number of control points - 1
+closed  # type of ek-curve
+<556 730 0.666667>	# control point as two floats separated by blank
+<616 708 0.666667>	# control point as two floats separated by blank
+<635 662 0.666667>	# control point as two floats separated by blank
+<605 595 0.666667>	# control point as two floats separated by blank
+<515 593 0.666667>	# control point as two floats separated by blank
+<485 669 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened  # type of ek-curve
+<452 225 0.666667>	# control point as two floats separated by blank
+<442 259 0.666667>	# control point as two floats separated by blank
+<477 274 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened  # type of ek-curve
+<477 274 0.666667	# control point as two floats separated by blank
+<510 300 0.666667>	# control point as two floats separated by blank
+<544 276 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened  # type of ek-curve
+<544 276 0.666667>	# control point as two floats separated by blank
+<580 268 0.666667>	# control point as two floats separated by blank
+<590 230 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened  # type of ek-curve
+<590 230 0.666667>	# control point as two floats separated by blank
+<607 202 0.666667>	# control point as two floats separated by blank
+<588 176 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened  # type of ek-curve
+<476 232 0.666667>	# control point as two floats separated by blank
+<485 266 0.666667>	# control point as two floats separated by blank
+<517 263 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened  # type of ek-curve
+<517 263 0.666667>	# control point as two floats separated by blank
+<553 264 0.666667>	# control point as two floats separated by blank
+<565 235 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened  # type of ek-curve
+<565 235 0.666667>	# control point as two floats separated by blank
+<589 217 0.666667>	# control point as two floats separated by blank
+<580 185 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <3>	# number of arcs following
+arc <3>	# degree = number of control points - 1
+opened  # type of ek-curve
+<580 185 0.666667>	# control point as two floats separated by blank
+<587 163 0.666667>	# control point as two floats separated by blank
+<573 146 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <6>	# number of arcs following
+arc <6>	# degree = number of control points - 1
+opened  # type of ek-curve
+<452 225 0.666667>	# control point as two floats separated by blank
+<460 196 0.666667>	# control point as two floats separated by blank
+<500 201 0.666667>	# control point as two floats separated by blank
+<523 176 0.666667>	# control point as two floats separated by blank
+<518 146 0.666667>	# control point as two floats separated by blank
+<487 128 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
+arcs <7>	# number of arcs following
+arc <7>	# degree = number of control points - 1
+opened  # type of ek-curve
+<476 232 0.666667>	# control point as two floats separated by blank
+<479 210 0.666667>	# control point as two floats separated by blank
+<501 214 0.666667>	# control point as two floats separated by blank
+<535 216 0.666667>	# control point as two floats separated by blank
+<559 180 0.666667>	# control point as two floats separated by blank
+<537 138 0.666667>	# control point as two floats separated by blank
+<487 128 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc descriptionarcs <7>	# number of arcs following
+arc <7>	# degree = number of control points - 1
+opened  # type of ek-curve
+<415 130 0.666667>	# control point as two floats separated by blank
+<440 124 0.666667>	# control point as two floats separated by blank
+<470 130 0.666667>	# control point as two floats separated by blank
+<487 128 0.666667>	# control point as two floats separated by blank
+<530 123 0.666667>	# control point as two floats separated by blank
+<560 125 0.666667>	# control point as two floats separated by blank
+<573 146 0.666667>	# control point as two floats separated by blank
+endarc	# terminates arc description
