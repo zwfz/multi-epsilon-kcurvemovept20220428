@@ -18,6 +18,7 @@
 /*实现画曲率直方图 20220514*/
 /*改用牛顿法求ti 20220523*/
 /*提高画多条线效率，只计算一次ci0,ci1,ci2的值存入矩阵，不用每次计算 20220624*/
+/*修改无法导入点文件的bug：存入点文件时没有调用ekcurve函数，导致没有计算ci0,ci1,ci2 20220624*/
 
 
 using namespace std;
@@ -155,6 +156,7 @@ void endcurve()
 	flag0 = false;
 	cps.clear();
 	ai.clear();
+	
 }
 
 void myDisplay()
@@ -315,7 +317,7 @@ void myDisplay()
 		glPointSize(7);
 		glBegin(GL_POINTS);			//画点
 
-		int n = MtrxCps_o[i].size();
+		int n = (int)MtrxCps_o[i].size();
 
 		for (int j = 0; j < n ; j++)
 		{
@@ -1714,8 +1716,22 @@ void InpPtsFl()
 
 			else if (first.compare("endarc") == 0)
 			{
+				int nn = (int)cps.size();
+				if (nn > 2)
+				{
+					if (closedflag)
+					{
+						closed_ekcurve(cps, ai);
+					}
+					else
+					{
+						opened_ekcurve(cps, ai);
+					}
+				}
 				std::cout << "endarc" << std::endl;
 				endcurve();
+				
+				
 			}
 
 			else
@@ -1744,7 +1760,7 @@ void InpPtsFl()
 				//cps.push_back(EVec2d(x, winHeight - y));
 				cps.push_back(EVec2d(x, y));
 				ai.push_back(a);
-
+				
 			}
 
 		}
