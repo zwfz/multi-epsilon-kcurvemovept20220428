@@ -19,6 +19,7 @@
 /*改用牛顿法求ti 20220523*/
 /*提高画多条线效率，只计算一次ci0,ci1,ci2的值存入矩阵，不用每次计算 20220624*/
 /*修改无法导入点文件的bug：存入点文件时没有调用ekcurve函数，导致没有计算ci0,ci1,ci2 20220624*/
+/*增加动态修改当前曲线控制点功能 20220624*/
 
 
 using namespace std;
@@ -66,12 +67,14 @@ int Num, i0;
 
 int px = 0;
 int py = 0;
-int aiIndex = 0;
+int PtIndex = 0;
 
 bool flag0 = false;
 bool closedflag = false;
 
 bool aiflag = false;
+
+bool Mdfyflag = false;
 
 void closed_ekcurve(vecEg2dd& cpsi, vector<double>& ai);
 void opened_ekcurve(vecEg2dd& cpsi, vector<double>& ai);
@@ -112,7 +115,7 @@ void InpPtsFl();
 void SvPtsFl();
 
 void changeai(int i);
-int getaiIndex(int x, int y);
+int getPtIndex(int x, int y);
 
 void endcurve();
 
@@ -1422,20 +1425,27 @@ void changeai(int i)
 	}
 }
 
-int getaiIndex(int x, int y)
+int getPtIndex(int x, int y)
 {
 	for (int i = 0; i< Num; i++)
 	{
-		
-		if (fabs(cps[i][0] - (double)x) < 3. || fabs(cps[i][1] - (double)y) < 3.)
-			if (closedflag)
-			{
+		if (aiflag)
+		{
+			if (fabs(cps[i][0] - (double)x) < 3. || fabs(cps[i][1] - (double)y) < 3.)
+				if (closedflag)
+				{
+					return i;
+				}
+				else
+				{
+					return i - 1;
+				}
+		}
+		if (Mdfyflag)
+		{
+			if (fabs(cps[i][0] - (double)x) < 3. || fabs(cps[i][1] - (double)y) < 3.)
 				return i;
-			}
-			else
-			{
-				return i - 1;
-			}
+		}
 			
 
 	}
@@ -1456,36 +1466,42 @@ void OnMouse(int button, int state, int x, int y)
 						
 		}*/
 		
-		if (!aiflag)
+		if (aiflag)
+		{
+			int Index = getPtIndex(x, winHeight - y);
+			if (Index > -1)
+			{
+				PtIndex = Index;
+				cout << PtIndex << endl;
+			}
+
+			
+			
+			
+		}
+		else if (Mdfyflag)
+		{
+			int Index = getPtIndex(x, winHeight - y);
+			if (Index > -1)
+			{
+				PtIndex = Index;
+				cout << PtIndex << endl;
+			}
+		}
+		else
 		{
 			cps.push_back(EVec2d(x, winHeight - y));
 
-			if ((Num>2) &&(checkpt(x, winHeight - y)))
+			if ((Num > 2) && (checkpt(x, winHeight - y)))
 			{
 				cps[0][0] = x;					//若终点与起点重合，则起始点合为一点，变为闭式ek-curve
 				cps[0][1] = winHeight - y;
 				cps.pop_back();
 				closedflag = true;
-				
+
 
 			}
 			
-			
-		}
-		else
-		{
-			int Index = getaiIndex(x, winHeight - y);
-			if (Index > -1)
-			{
-				aiIndex = Index;
-				cout << aiIndex << endl;
-			}
-			
-			/*if (i >= 0) {
-				changeai(i);
-			}
-			
-			aiflag = false;*/
 		}
 		
 		
@@ -1502,24 +1518,32 @@ void OnMouse(int button, int state, int x, int y)
 
 void MouseMove(int x, int y)
 {
-	if (!aiflag)
-	{
-		cps[Num - 1][0] = x;
-		cps[Num - 1][1] = winHeight - y;
-	}
-	else
+	if (aiflag)
 	{
 		int dx = x - px;
-		
-		if (ai[aiIndex] >= 2. / 3. && ai[aiIndex] < 1)
+
+		if (ai[PtIndex] >= 2. / 3. && ai[PtIndex] < 1)
 		{
-			ai[aiIndex] += dx / 10000.;
+			ai[PtIndex] += dx / 10000.;
 		}
 		else
 		{
-			ai[aiIndex] = defaultai;
+			ai[PtIndex] = defaultai;
 		}
+
 		
+	}
+	else if (Mdfyflag)
+	{
+		cps[PtIndex][0] = x;
+		cps[PtIndex][1] = winHeight - y;
+	}
+
+	else
+	{
+		
+		cps[Num - 1][0] = x;
+		cps[Num - 1][1] = winHeight - y;
 		
 	}
 
@@ -1555,11 +1579,17 @@ void menuFunc(int value)
 	case 1:
 		closedflag = false;
 		aiflag = false;
+		Mdfyflag = false;
 		break;
 
 	case 2:
 		aiflag = true;
-		
+		Mdfyflag = false;
+		break;
+
+	case 5:
+		Mdfyflag = true;
+		aiflag = false;
 		break;
 
 	case 999:
@@ -1799,6 +1829,7 @@ int main(int argc, char **argv)
 	menu = glutCreateMenu(menuFunc);
 	glutAddMenuEntry("Draw Ek-curve", 1);
 	glutAddMenuEntry("Change a", 2);
+	glutAddMenuEntry("Modify Ek-curve", 5);
 	glutAddSubMenu("Save & Import", submenu1);
 	glutAddMenuEntry("Exit", 999);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
